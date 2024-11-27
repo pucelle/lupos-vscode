@@ -1,0 +1,20 @@
+{
+	"name": "lupos-server",
+	"version": "1.0.0",
+	"description": "TypeScript language service plugin for lupos",
+	"main": "out/index.js",
+	"dependencies": {
+		"vscode-css-languageservice": "^3.0.13",
+		"vscode-html-languageservice": "^2.1.12",
+		"vscode-languageserver-textdocument": "^1.0.1",
+		"vscode-languageserver-types": "^3.16.0"
+	},
+	"devDependencies": {
+		"@types/node": "^22.7.4",
+		"typescript": "^5.6.2"
+	},
+	"scripts": {
+		"build": "tsc -b",
+		"watch": "tsc -b -w"
+	}
+}
