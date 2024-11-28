@@ -10,7 +10,7 @@ export interface FlitIcon {
 
 
 /** Discovers imported icons from `import XXX from '...svg'`. */
-export function discoverFlitIcons(sourceFile: ts.SourceFile, typescript: typeof ts): FlitIcon[] {
+export function discoverFlitIcons(sourceFile: ts.SourceFile, typescript: typeof ts): LuposIc[] {
 	return matchNodeDescentUnNesting(sourceFile, child => matchFlitIcon(child, typescript))
 }
 

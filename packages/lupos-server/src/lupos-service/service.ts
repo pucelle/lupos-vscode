@@ -1,7 +1,7 @@
 import * as ts from 'typescript'
 import {FlitTokenScanner, FlitTokenType} from './toker-scanner'
 import {LanguageService as HTMLLanguageService} from 'vscode-html-languageservice'
-import {FlitAnalyzer} from './lupos-analysis/flit-analyzer'
+import {LuposAnalyzer} from './analyzer/analyzer'
 import {TextDocument} from 'vscode-languageserver-textdocument'
 import {TemplateContext} from '../shared-services'
 import {FlitCompletion} from './completion'
@@ -16,7 +16,7 @@ export class LuposService {
 	readonly context: ProjectContext
 
 	private scanner: FlitTokenScanner
-	private analyzer: FlitAnalyzer
+	private analyzer: LuposAnalyzer
 	private completion: FlitCompletion
 	private quickInfo: FlitQuickInfo
 	private flitDefinition: FlitDefinition
@@ -25,7 +25,7 @@ export class LuposService {
 		this.context = context
 
 		this.scanner = new FlitTokenScanner(htmlService)
-		this.analyzer = new FlitAnalyzer(context.service)
+		this.analyzer = new LuposAnalyzer(context.service)
 
 		this.completion = new FlitCompletion(this.analyzer)
 		this.quickInfo = new FlitQuickInfo(this.analyzer)

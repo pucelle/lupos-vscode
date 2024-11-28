@@ -1,6 +1,6 @@
 import * as ts from 'typescript'
 import {FlitToken, FlitTokenType} from './toker-scanner'
-import {FlitAnalyzer} from './lupos-analysis/flit-analyzer'
+import {LuposAnalyzer} from './analyzer/analyzer'
 import {getScriptElementKindFromToken, splitPropertyAndModifiers} from './utils'
 import {findNodeAscent, getNodeIdentifier, getNodeName} from '../ts-utils/_ast-utils'
 
@@ -9,7 +9,7 @@ import {findNodeAscent, getNodeIdentifier, getNodeName} from '../ts-utils/_ast-u
 export class FlitDefinition {
 
 	constructor(
-		private readonly analyzer: FlitAnalyzer,
+		private readonly analyzer: LuposAnalyzer,
 		private readonly typescript: typeof ts
 	) {}
 	

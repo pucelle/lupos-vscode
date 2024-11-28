@@ -1,90 +1,62 @@
 import * as ts from 'typescript'
-import {discoverFlitBindings, discoverFlitComponents, getFlitDefinedFromComponentDeclaration} from './discover-flit-components-bindings'
-import {discoverFlitEvents} from './discover-flit-events'
+import {discoverFlitBindings as discoverLuposBindings, discoverLuposComponents, getFlitDefinedFromComponentDeclaration} from './components'
+import {analyzeLuposComponentEvents} from './events'
 import {discoverFlitProperties, discoverFlitSubProperties} from './discover-flit-properties'
 import {iterateExtendedClasses, resolveExtendedClasses} from '../../ts-utils/_ast-utils'
-import {mayDebug} from '../../core/logger'
 import {discoverFlitIcons, FlitIcon} from './discover-flit-icons'
+import {ProjectContext} from '../../core'
+import {LuposBinding, LuposComponent, LuposProperty} from './types'
+import {ListMap} from '../../lupos-ts-module'
 
 
-export class FlitAnalyzer {
+export class LuposAnalyzer {
 
-	/** Last analysised source files. */
+	readonly context: ProjectContext
+
+	/** Latest analyzed source files. */
 	private files: Set<ts.SourceFile> = new Set()
 
-	/** Analysised components. */
-	private components: Map<ts.Declaration, FlitComponent> = new Map()
+	/** Analyzed components. */
+	private components: Set<LuposComponent> = new Set()
 
-	/** Analysised bindings. */
-	private bindings: Map<string, FlitBinding> = new Map()
+	/** Analyzed components by name. */
+	private componentsByName: ListMap<string, LuposComponent> = new ListMap()
+
+	/** Analyzed bindings. */
+	private bindings: Set<LuposBinding> = new Set()
+
+	/** Analyzed bindings by name. */
+	private bindingsByName: ListMap<string, LuposBinding> = new ListMap()
 
 	/** All imported icons. */
 	private icons: Map<string, FlitIcon> = new Map()
 
-	/** Analysised components, but extended class not been analysised because expired or can't been resolved. */
-	private extendedClassNotResolvedComponents: Set<FlitComponent> = new Set()
-
-	constructor(
-		private readonly typescript: typeof ts,
-		private readonly tsLanguageService: ts.LanguageService
-	) {}
-
-	get program() {
-		return this.tsLanguageService.getProgram()!
+	constructor(context: ProjectContext) {
+		this.context = context
 	}
 
-	get typeChecker() {
-		return this.program.getTypeChecker()
-	}
-
-	/** Format type to a readable description. */
-	getTypeDescription(type: ts.Type) {
-		return this.typeChecker.typeToString(type)
-	}
-
-	/** Format type to a readable description. */
-	getTypeUnionStringList(type: ts.Type): string[] {
-		if (type.isUnion()) {
-			return type.types.map(t => this.getTypeUnionStringList(t)).flat()
-		}
-		else if (type.isStringLiteral()) {
-			return [this.getTypeDescription(type).replace(/['"]/g, '')]
-		}
-		else {
-			return []
-		}
-	}
-
-	/** Update to makesure reloading changed source files. */
+	/** Update to make sure reloading changed source files. */
 	update() {
-		let changedFiles = this.getChangedFiles()
+		let changedFiles = this.compareFiles()
 
 		for (let file of changedFiles) {
 			this.analysisTSFile(file)
 		}
-
-		// If `extends XXX` can't been resolved, keep it in `extendedClassNotResolvedComponents` and check it every time.
-		// Otherwise we analysis all components, and then their extended classes.
-		if (changedFiles.size > 0) {
-			for (let component of [...this.extendedClassNotResolvedComponents]) {
-				let superClasses = this.getExtendedClasses(component.declaration)
-				if (superClasses.length > 0) {
-					component.extendedClasses = superClasses
-					this.extendedClassNotResolvedComponents.delete(component)
-				}
-			}
-		}
 	}
 
-	/** Get changed or not analysised files but exclude `lib.???.d.ts`. */
-	private getChangedFiles() {
-		// All files exclude typescript lib files.
+	/** Compare files, returned changed or not analyzed files, always exclude `lib.???.d.ts`. */
+	private compareFiles() {
+
+		// Exclude typescript lib files.
 		let allFiles = new Set(
-			this.program.getSourceFiles()
-				.filter(file => !/lib\.(?:[^\\\/]+\.)?d\.ts$/.test(file.fileName))
+			this.context.program.getSourceFiles()
+				.filter(file => !this.context.helper.symbol.isOfTypescriptLib(file))
 		)
 
+		// Not analyzed files.
 		let changedFiles: Set<ts.SourceFile> = new Set()
+
+		// Analyzed but have been deleted files.
 		let expiredFiles: Set<ts.SourceFile> = new Set()
 
 		for (let file of allFiles) {
@@ -107,35 +79,33 @@ export class FlitAnalyzer {
 
 	/** Make parsed results in given files expired. */
 	private makeFilesExpire(files: Set<ts.SourceFile>) {
-		// Defined component expired.
-		for (let [declaration, component] of [...this.components.entries()]) {
-			if (files.has(component.sourceFile)) {
-				this.components.delete(declaration)
-				this.extendedClassNotResolvedComponents.delete(component)
-			}
-		}
 
-		// Extended Classes expired.
-		for (let component of this.components.values()) {
-			if (component.extendedClasses && component.extendedClasses.some(superClass => files.has(superClass.sourceFile))) {
-				component.extendedClasses = []
-				this.extendedClassNotResolvedComponents.add(component)
+		// Defined component expired.
+		for (let component of [...this.components]) {
+			if (!files.has(component.sourceFile)) {
+				continue
 			}
+
+			this.components.delete(component)
+			this.componentsByName.delete(component.name, component)
 		}
 
 		// Binding expired.
-		for (let [bindingName, binding] of [...this.bindings.entries()]) {
-			if (files.has(binding.sourceFile)) {
-				this.bindings.delete(bindingName)
+		for (let binding of this.bindings) {
+			if (!files.has(binding.sourceFile)) {
+				continue
 			}
+
+			this.bindings.delete(binding)
+			this.bindingsByName.delete(binding.name, binding)
 		}
 	}
 
 	/** Analysis each ts file. */
 	private analysisTSFile(sourceFile: ts.SourceFile) {
-		let components = discoverFlitComponents(sourceFile, this.typescript, this.typeChecker)
-		let bindings = discoverFlitBindings(sourceFile, this.typescript, this.typeChecker)
-		let icons = discoverFlitIcons(sourceFile, this.typescript)
+		let components = discoverLuposComponents(sourceFile, this.typeChecker)
+		let bindings = discoverLuposBindings(sourceFile, this.typeChecker)
+		let icons = discoverFlitIcons(sourceFile)
 
 		// `@define ...` results will always cover others. 
 		for (let component of components) {
@@ -168,24 +138,24 @@ export class FlitAnalyzer {
 	/** Analysis one base component result. */
 	private analysisComponent(defined: FlitDefined) {
 		let declaration = defined.declaration
-		let properties: Map<string, FlitProperty> = new Map()
+		let properties: Map<string, LuposProperty> = new Map()
 		let events: Map<string, FlitEvent> = new Map()
-		let refs: Map<string, FlitProperty> = new Map()
-		let slots: Map<string, FlitProperty> = new Map()
+		let refs: Map<string, LuposProperty> = new Map()
+		let slots: Map<string, LuposProperty> = new Map()
 
-		for (let property of discoverFlitProperties(declaration, this.typescript, this.typeChecker)) {
+		for (let property of discoverFlitProperties(declaration, this.typeChecker)) {
 			properties.set(property.name, property)
 		}
 
-		for (let event of discoverFlitEvents(declaration, this.typescript, this.typeChecker)) {
+		for (let event of analyzeLuposComponentEvents(declaration, this.typeChecker)) {
 			events.set(event.name, event)
 		}
 
-		for (let ref of discoverFlitSubProperties(declaration, 'refs', this.typescript, this.typeChecker) || []) {
+		for (let ref of discoverFlitSubProperties(declaration, 'refs', this.typeChecker) || []) {
 			refs.set(ref.name, ref)
 		}
 
-		for (let slot of discoverFlitSubProperties(declaration, 'slots', this.typescript, this.typeChecker) || []) {
+		for (let slot of discoverFlitSubProperties(declaration, 'slots', this.typeChecker) || []) {
 			slots.set(slot.name, slot)
 		}
 		
@@ -196,8 +166,8 @@ export class FlitAnalyzer {
 			events,
 			refs,
 			slots,
-			extendedClasses: [],
-		} as FlitComponent
+			extended: [],
+		} as LuposComponent
 
 		if (declaration.heritageClauses && declaration.heritageClauses?.length > 0) {
 			this.extendedClassNotResolvedComponents.add(component)
@@ -205,7 +175,7 @@ export class FlitAnalyzer {
 
 		mayDebug(() => ({
 			name: component.name,
-			superClasses: [...iterateExtendedClasses(component.declaration, this.typescript, this.typeChecker)].map(n => n.declaration.name?.getText()),
+			superClasses: [...iterateExtendedClasses(component.declaration, this.typeChecker)].map(n => n.declaration.name?.getText()),
 			properties: [...component.properties.values()].map(p => p.name),
 			events: [...component.events.values()].map(e => e.name),
 			refs: [...component.refs.values()].map(e => e.name),
@@ -217,25 +187,25 @@ export class FlitAnalyzer {
 
 	/** Analysis extended classes and returns result. */
 	private getExtendedClasses(declaration: ts.ClassLikeDeclaration) {
-		let extendedClasses: FlitComponent[] = []
-		let classesWithType = resolveExtendedClasses(declaration, this.typescript, this.typeChecker)
+		let extended: LuposComponent[] = []
+		let classesWithType = resolveExtendedClasses(declaration, this.typeChecker)
 
 		if (classesWithType) {
 			for (let declaration of classesWithType.map(v => v.declaration)) {
 				let superClass = this.getAnalysisedSuperClass(declaration)
 				if (superClass) {
-					extendedClasses.push(superClass)
+					extended.push(superClass)
 				}
 			}
 		}
 
-		return extendedClasses
+		return extended
 	}
 
 	/** Makesure component analysised and returns result. */
-	private getAnalysisedSuperClass(declaration: ts.ClassLikeDeclaration): FlitComponent | null {
+	private getAnalysisedSuperClass(declaration: ts.ClassLikeDeclaration): LuposComponent | null {
 		if (!this.components.has(declaration)) {
-			let defined = getFlitDefinedFromComponentDeclaration(declaration, this.typescript, this.typeChecker)
+			let defined = getFlitDefinedFromComponentDeclaration(declaration, this.typeChecker)
 			if (defined) {
 				this.analysisComponent(defined)
 			}
@@ -244,21 +214,19 @@ export class FlitAnalyzer {
 		return this.components.get(declaration) || null
 	}
 
-
-
 	/** Get component by it's tag name. */
-	getComponent(name: string): FlitComponent | null {
+	getComponent(name: string): LuposComponent | null {
 		let component = [...this.components.values()].find(component => component.name === name)
 		return component || null
 	}
 
 	/** Get component by it's class declaration. */
-	getComponentByDeclaration(declaration: ts.ClassLikeDeclaration): FlitComponent | null {
+	getComponentByDeclaration(declaration: ts.ClassLikeDeclaration): LuposComponent | null {
 		return this.components.get(declaration) || null
 	}
 
 	/** Get bindings that name matches. */
-	getBinding(name: string): FlitBinding | null {
+	getBinding(name: string): LuposBinding | null {
 		for (let binding of this.bindings.values()) {
 			if (binding.name === name) {
 				return binding
@@ -269,7 +237,7 @@ export class FlitAnalyzer {
 	}
 
 	/** Get properties for component defined with `tagName`, and name matches. */
-	getComponentProperty(propertyName: string, tagName: string): FlitProperty | null {
+	getComponentProperty(propertyName: string, tagName: string): LuposProperty | null {
 		let component = this.getComponent(tagName)
 		if (!component) {
 			return null
@@ -305,7 +273,7 @@ export class FlitAnalyzer {
 	}
 
 	/** Get all refs or slots properties outer class declaration contains given node. */
-	getSubProperties(propertyName: 'refs' | 'slots', subPropertyName: string, tagName: string): FlitProperty | null {
+	getSubProperties(propertyName: 'refs' | 'slots', subPropertyName: string, tagName: string): LuposProperty | null {
 		let component = this.getComponent(tagName)
 		if (!component) {
 			return null
@@ -330,8 +298,8 @@ export class FlitAnalyzer {
 
 
 	/** Get components that name starts with label. */
-	getComponentsForCompletion(label: string): FlitComponent[] {
-		let components: FlitComponent[] = []
+	getComponentsForCompletion(label: string): LuposComponent[] {
+		let components: LuposComponent[] = []
 
 		for (let component of this.components.values()) {
 			if (component.name?.startsWith(label)) {
@@ -343,8 +311,8 @@ export class FlitAnalyzer {
 	}
 
 	/** Get bindings that name starts with label. */
-	getBindingsForCompletion(label: string): FlitBinding[] {
-		let bindings: FlitBinding[] = []
+	getBindingsForCompletion(label: string): LuposBinding[] {
+		let bindings: LuposBinding[] = []
 
 		for (let binding of this.bindings.values()) {
 			if (binding.name.startsWith(label)) {
@@ -356,13 +324,13 @@ export class FlitAnalyzer {
 	}
 
 	/** Get properties for component defined with `tagName`, and name starts with label. */
-	getComponentPropertiesForCompletion(label: string, tagName: string, mustBePublic = true): FlitProperty[] | null {
+	getComponentPropertiesForCompletion(label: string, tagName: string, mustBePublic = true): LuposProperty[] | null {
 		let component = this.getComponent(tagName)
 		if (!component) {
 			return null
 		}
 		
-		let properties: Map<string, FlitProperty> = new Map()
+		let properties: Map<string, LuposProperty> = new Map()
 
 		for (let com of this.walkComponents(component)) {
 			for (let property of com.properties.values()) {
@@ -380,10 +348,10 @@ export class FlitAnalyzer {
 	}
 
 	/** Walk component and it's super classes. */
-	private *walkComponents(component: FlitComponent, deep = 0): Generator<FlitComponent> {
+	private *walkComponents(component: LuposComponent, deep = 0): Generator<LuposComponent> {
 		yield component
 
-		for (let superClass of component.extendedClasses) {
+		for (let superClass of component.extended) {
 			yield *this.walkComponents(superClass, deep + 1)
 		}
 	}
@@ -409,13 +377,13 @@ export class FlitAnalyzer {
 	}
 
 	/** Get all refs or slots properties outer class declaration contains given node. */
-	getSubPropertiesForCompletion(propertyName: 'refs' | 'slots', subPropertyNameLabel: string, tagName: string): FlitProperty[] | null {
+	getSubPropertiesForCompletion(propertyName: 'refs' | 'slots', subPropertyNameLabel: string, tagName: string): LuposProperty[] | null {
 		let component = this.getComponent(tagName)
 		if (!component) {
 			return null
 		}
 
-		let properties: Map<string, FlitProperty> = new Map()
+		let properties: Map<string, LuposProperty> = new Map()
 
 		for (let com of this.walkComponents(component)) {
 			for (let property of com[propertyName].values()) {

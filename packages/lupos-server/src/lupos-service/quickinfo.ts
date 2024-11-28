@@ -1,6 +1,6 @@
 import * as ts from 'typescript'
 import {FlitToken, FlitTokenType} from './toker-scanner'
-import {FlitAnalyzer} from './lupos-analysis/flit-analyzer'
+import {LuposAnalyzer} from './analyzer/analyzer'
 import {LuposBindingModifiers} from '../complete-data/lupos-binding-modifiers'
 import {DOMStyleProperties} from '../complete-data/dom-style-properties'
 import {getScriptElementKindFromToken, getSymbolDisplayPartKindFromToken, splitPropertyAndModifiers} from './utils'
@@ -15,7 +15,7 @@ import {getSimulateTokenFromNonTemplate} from './non-template'
 export class FlitQuickInfo {
 
 	constructor(
-		private readonly analyzer: FlitAnalyzer,
+		private readonly analyzer: LuposAnalyzer,
 		private readonly typescript: typeof ts
 	) {}
 	

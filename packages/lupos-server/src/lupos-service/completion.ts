@@ -1,6 +1,6 @@
 import * as ts from 'typescript'
 import {FlitToken, FlitTokenType} from './toker-scanner'
-import {FlitAnalyzer} from './lupos-analysis/flit-analyzer'
+import {LuposAnalyzer} from './analyzer/analyzer'
 import {DOMElementEvents} from '../complete-data/dom-element-events'
 import {LuposBindingModifiers} from '../complete-data/lupos-binding-modifiers'
 import {DOMStyleProperties} from '../complete-data/dom-style-properties'
@@ -15,7 +15,7 @@ import {getSimulateTokenFromNonTemplate} from './non-template'
 export class FlitCompletion {
 
 	constructor(
-		private readonly analyzer: FlitAnalyzer,
+		private readonly analyzer: LuposAnalyzer,
 		private readonly typescript: typeof ts
 	) {}
 	
