@@ -1,12 +1,10 @@
-import * as ts from 'typescript'
-import {discoverFlitBindings as discoverLuposBindings, discoverLuposComponents, getFlitDefinedFromComponentDeclaration} from './components'
-import {analyzeLuposComponentEvents} from './events'
-import {discoverFlitProperties, discoverFlitSubProperties} from './discover-flit-properties'
-import {iterateExtendedClasses, resolveExtendedClasses} from '../../ts-utils/_ast-utils'
-import {discoverFlitIcons, FlitIcon} from './discover-flit-icons'
+import * as TS from 'typescript'
+import {analyzeLuposComponents} from './components'
+import {analyzeLuposIcons, LuposIcon} from './icons'
 import {ProjectContext} from '../../core'
-import {LuposBinding, LuposComponent, LuposProperty} from './types'
+import {LuposBinding, LuposComponent, LuposEvent, LuposProperty} from './types'
 import {ListMap} from '../../lupos-ts-module'
+import {analyzeLuposBindings} from './bindings'
 
 
 export class LuposAnalyzer {
@@ -14,10 +12,13 @@ export class LuposAnalyzer {
 	readonly context: ProjectContext
 
 	/** Latest analyzed source files. */
-	private files: Set<ts.SourceFile> = new Set()
+	private files: Set<TS.SourceFile> = new Set()
 
 	/** Analyzed components. */
 	private components: Set<LuposComponent> = new Set()
+
+	/** Analyzed components by source file. */
+	private componentsByFile: ListMap<TS.SourceFile, LuposComponent> = new ListMap()
 
 	/** Analyzed components by name. */
 	private componentsByName: ListMap<string, LuposComponent> = new ListMap()
@@ -28,8 +29,11 @@ export class LuposAnalyzer {
 	/** Analyzed bindings by name. */
 	private bindingsByName: ListMap<string, LuposBinding> = new ListMap()
 
+	/** Analyzed bindings by source file. */
+	private bindingsByFile: ListMap<TS.SourceFile, LuposBinding> = new ListMap()
+
 	/** All imported icons. */
-	private icons: Map<string, FlitIcon> = new Map()
+	private icons: Map<string, LuposIcon> = new Map()
 
 	constructor(context: ProjectContext) {
 		this.context = context
@@ -40,7 +44,7 @@ export class LuposAnalyzer {
 		let changedFiles = this.compareFiles()
 
 		for (let file of changedFiles) {
-			this.analysisTSFile(file)
+			this.analyzeTSFile(file)
 		}
 	}
 
@@ -54,10 +58,10 @@ export class LuposAnalyzer {
 		)
 
 		// Not analyzed files.
-		let changedFiles: Set<ts.SourceFile> = new Set()
+		let changedFiles: Set<TS.SourceFile> = new Set()
 
 		// Analyzed but have been deleted files.
-		let expiredFiles: Set<ts.SourceFile> = new Set()
+		let expiredFiles: Set<TS.SourceFile> = new Set()
 
 		for (let file of allFiles) {
 			if (!this.files.has(file)) {
@@ -78,7 +82,7 @@ export class LuposAnalyzer {
 	}
 
 	/** Make parsed results in given files expired. */
-	private makeFilesExpire(files: Set<ts.SourceFile>) {
+	private makeFilesExpire(files: Set<TS.SourceFile>) {
 
 		// Defined component expired.
 		for (let component of [...this.components]) {
@@ -88,6 +92,7 @@ export class LuposAnalyzer {
 
 			this.components.delete(component)
 			this.componentsByName.delete(component.name, component)
+			this.componentsByFile.delete(component.sourceFile, component)
 		}
 
 		// Binding expired.
@@ -98,211 +103,117 @@ export class LuposAnalyzer {
 
 			this.bindings.delete(binding)
 			this.bindingsByName.delete(binding.name, binding)
+			this.bindingsByFile.delete(binding.sourceFile, binding)
 		}
 	}
 
-	/** Analysis each ts file. */
-	private analysisTSFile(sourceFile: ts.SourceFile) {
-		let components = discoverLuposComponents(sourceFile, this.typeChecker)
-		let bindings = discoverLuposBindings(sourceFile, this.typeChecker)
-		let icons = discoverFlitIcons(sourceFile)
+	/** Analyze each ts source file. */
+	private analyzeTSFile(sourceFile: TS.SourceFile) {
+		let components = analyzeLuposComponents(sourceFile, this.context.helper)
+		let bindings = analyzeLuposBindings(sourceFile, this.context.helper)
+		let icons = analyzeLuposIcons(sourceFile, this.context.helper)
 
-		// `@define ...` results will always cover others. 
+		this.files.add(sourceFile)
+
 		for (let component of components) {
-			this.analysisComponent(component)
+			this.components.add(component)
+			this.componentsByName.add(component.name, component)
+			this.componentsByFile.add(component.sourceFile, component)
 		}
 	
 		for (let binding of bindings) {
-			this.bindings.set(binding.name, binding)
-
-			mayDebug(() => ({
-				name: binding.name,
-				description: binding.description,
-			}))
+			this.bindings.add(binding)
+			this.bindingsByName.add(binding.name, binding)
+			this.bindingsByFile.add(binding.sourceFile, binding)
 		}
 
 		for (let icon of icons) {
 			this.icons.set(icon.name, icon)
 		}
-
-		if (icons.length > 0) {
-			mayDebug(() => {
-				return icons.map(i => ({
-					name: i.name,
-					description: i.description,
-				}))
-			})
-		}
 	}
 
-	/** Analysis one base component result. */
-	private analysisComponent(defined: FlitDefined) {
-		let declaration = defined.declaration
-		let properties: Map<string, LuposProperty> = new Map()
-		let events: Map<string, FlitEvent> = new Map()
-		let refs: Map<string, LuposProperty> = new Map()
-		let slots: Map<string, LuposProperty> = new Map()
+	/** Get component by it's class declaration, use it for completion. */
+	getComponentByDeclaration(declaration: TS.ClassLikeDeclaration): LuposComponent | undefined {
+		let sourceFile = declaration.getSourceFile()
 
-		for (let property of discoverFlitProperties(declaration, this.typeChecker)) {
-			properties.set(property.name, property)
+		// Ensure analyzed source file.
+		if (!this.files.has(sourceFile)) {
+			this.analyzeTSFile(sourceFile)
 		}
 
-		for (let event of analyzeLuposComponentEvents(declaration, this.typeChecker)) {
-			events.set(event.name, event)
+		let components = this.componentsByFile.get(sourceFile)
+		if (components) {
+			return components?.find(c => c.declaration === declaration)
 		}
 
-		for (let ref of discoverFlitSubProperties(declaration, 'refs', this.typeChecker) || []) {
-			refs.set(ref.name, ref)
-		}
-
-		for (let slot of discoverFlitSubProperties(declaration, 'slots', this.typeChecker) || []) {
-			slots.set(slot.name, slot)
-		}
-		
-		// Heriatages to be analysised later, so we will analysis `@define ...`, and then super class.
-		let component = {
-			...defined,
-			properties,
-			events,
-			refs,
-			slots,
-			extended: [],
-		} as LuposComponent
-
-		if (declaration.heritageClauses && declaration.heritageClauses?.length > 0) {
-			this.extendedClassNotResolvedComponents.add(component)
-		}
-
-		mayDebug(() => ({
-			name: component.name,
-			superClasses: [...iterateExtendedClasses(component.declaration, this.typeChecker)].map(n => n.declaration.name?.getText()),
-			properties: [...component.properties.values()].map(p => p.name),
-			events: [...component.events.values()].map(e => e.name),
-			refs: [...component.refs.values()].map(e => e.name),
-			slots: [...component.slots.values()].map(e => e.name),
-		}))
-		
-		this.components.set(declaration, component)
+		return undefined
 	}
 
-	/** Analysis extended classes and returns result. */
-	private getExtendedClasses(declaration: ts.ClassLikeDeclaration) {
-		let extended: LuposComponent[] = []
-		let classesWithType = resolveExtendedClasses(declaration, this.typeChecker)
-
-		if (classesWithType) {
-			for (let declaration of classesWithType.map(v => v.declaration)) {
-				let superClass = this.getAnalysisedSuperClass(declaration)
-				if (superClass) {
-					extended.push(superClass)
-				}
-			}
-		}
-
-		return extended
-	}
-
-	/** Makesure component analysised and returns result. */
-	private getAnalysisedSuperClass(declaration: ts.ClassLikeDeclaration): LuposComponent | null {
-		if (!this.components.has(declaration)) {
-			let defined = getFlitDefinedFromComponentDeclaration(declaration, this.typeChecker)
-			if (defined) {
-				this.analysisComponent(defined)
-			}
-		}
-
-		return this.components.get(declaration) || null
-	}
-
-	/** Get component by it's tag name. */
-	getComponent(name: string): LuposComponent | null {
-		let component = [...this.components.values()].find(component => component.name === name)
-		return component || null
-	}
-
-	/** Get component by it's class declaration. */
-	getComponentByDeclaration(declaration: ts.ClassLikeDeclaration): LuposComponent | null {
-		return this.components.get(declaration) || null
-	}
-
-	/** Get bindings that name matches. */
-	getBinding(name: string): LuposBinding | null {
-		for (let binding of this.bindings.values()) {
-			if (binding.name === name) {
-				return binding
-			}
-		}
-
-		return null
-	}
-
-	/** Get properties for component defined with `tagName`, and name matches. */
-	getComponentProperty(propertyName: string, tagName: string): LuposProperty | null {
-		let component = this.getComponent(tagName)
-		if (!component) {
-			return null
-		}
 	
-		for (let com of this.walkComponents(component)) {
-			for (let property of com.properties.values()) {
-				if (property.name === propertyName) {
-					return property
-				}
-			}
-		}
+	/** Walk component and it's super classes. */
+	private *walkComponents(component: LuposComponent, deep = 0): Generator<LuposComponent> {
+		yield component
 
-		return null
+		for (let superClass of this.context.helper.class.walkSuper(component.declaration)) {
+			let superComponent = this.getComponentByDeclaration(superClass)
+			if (!superComponent) {
+				continue
+			}
+
+			yield superComponent
+			yield *this.walkComponents(superComponent, deep + 1)
+		}
 	}
 
-	/** Get events for component defined with `tagName`, and name matches. */
-	getComponentEvent(name: string, tagName: string): FlitEvent | null {
-		let component = this.getComponent(tagName)
-		if (!component) {
-			return null
-		}
-
+	/** Get properties of a component. */
+	getComponentProperty(component: LuposComponent, propertyName: string): LuposProperty | undefined {
 		for (let com of this.walkComponents(component)) {
-			for (let event of com.events.values()) {
-				if (event.name === name) {
-					return event
-				}
+			if (com.properties[propertyName]) {
+				return com.properties[propertyName]
 			}
 		}
 
-		return null
+		return undefined
+	}
+
+	/** Get event of a component. */
+	getComponentEvent(component: LuposComponent, eventName: string): LuposEvent | undefined {
+		for (let com of this.walkComponents(component)) {
+			if (com.events[eventName]) {
+				return com.events[eventName]
+			}
+		}
+
+		return undefined
 	}
 
 	/** Get all refs or slots properties outer class declaration contains given node. */
-	getSubProperties(propertyName: 'refs' | 'slots', subPropertyName: string, tagName: string): LuposProperty | null {
-		let component = this.getComponent(tagName)
-		if (!component) {
-			return null
-		}
-
+	getSubProperties(component: LuposComponent, propertyName: 'slotElements', subPropertyName: string): LuposProperty | undefined {
 		for (let com of this.walkComponents(component)) {
-			for (let property of com[propertyName].values()) {
-				if (property.name === subPropertyName) {
-					return property
-				}
+			if (com[propertyName][subPropertyName]) {
+				return com[propertyName][subPropertyName]
 			}
 		}
 
-		return null
+		return undefined
 	}
 
 	/** Get a icon from it's defined file name. */
-	getIcon(name: string): FlitIcon | null {
+	getIcon(name: string): LuposIcon | null {
 		return this.icons.get(name) || null
 	}
 
 
 
-	/** Get components that name starts with label. */
+	/** 
+	 * Get components that name starts with label.
+	 * label` can be empty, then will return all components.
+	 */
 	getComponentsForCompletion(label: string): LuposComponent[] {
 		let components: LuposComponent[] = []
 
-		for (let component of this.components.values()) {
-			if (component.name?.startsWith(label)) {
+		for (let component of this.components) {
+			if (!label || component.name.startsWith(label)) {
 				components.push(component)
 			}
 		}
@@ -310,12 +221,15 @@ export class LuposAnalyzer {
 		return components
 	}
 
-	/** Get bindings that name starts with label. */
+	/** 
+	 * Get bindings that name starts with label.
+	 * label` can be empty, then will return all bindings.
+	 */
 	getBindingsForCompletion(label: string): LuposBinding[] {
 		let bindings: LuposBinding[] = []
 
-		for (let binding of this.bindings.values()) {
-			if (binding.name.startsWith(label)) {
+		for (let binding of this.bindings) {
+			if (!label || binding.name.startsWith(label)) {
 				bindings.push(binding)
 			}
 		}
@@ -323,22 +237,24 @@ export class LuposAnalyzer {
 		return bindings
 	}
 
-	/** Get properties for component defined with `tagName`, and name starts with label. */
-	getComponentPropertiesForCompletion(label: string, tagName: string, mustBePublic = true): LuposProperty[] | null {
-		let component = this.getComponent(tagName)
-		if (!component) {
-			return null
-		}
-		
+	/** 
+	 * Get properties for component, and name starts with label.
+	 * `label` can be empty, then will return all properties.
+	 */
+	getComponentPropertiesForCompletion(component: LuposComponent, label: string, mustBePublic: boolean = true): LuposProperty[] {
 		let properties: Map<string, LuposProperty> = new Map()
 
 		for (let com of this.walkComponents(component)) {
-			for (let property of com.properties.values()) {
+			for (let property of Object.values(com.properties)) {
 				if (mustBePublic && !property.public) {
 					continue
 				}
+
+				if (properties.has(property.name)) {
+					continue
+				}
 				
-				if (property.name.startsWith(label) && !properties.has(property.name)) {
+				if (label || property.name.startsWith(label)) {
 					properties.set(property.name, property)
 				}
 			}
@@ -347,27 +263,20 @@ export class LuposAnalyzer {
 		return [...properties.values()]
 	}
 
-	/** Walk component and it's super classes. */
-	private *walkComponents(component: LuposComponent, deep = 0): Generator<LuposComponent> {
-		yield component
-
-		for (let superClass of component.extended) {
-			yield *this.walkComponents(superClass, deep + 1)
-		}
-	}
-
-	/** Get events for component defined with `tagName`, and name starts with label. */
-	getComponentEventsForCompletion(label: string, tagName: string): FlitEvent[] | null {
-		let component = this.getComponent(tagName)
-		if (!component) {
-			return null
-		}
-
-		let events: Map<string, FlitEvent> = new Map()
+	/** 
+	 * Get events for component, and name starts with label.
+	 * `label` can be empty, then will return all events.
+	 */
+	getComponentEventsForCompletion(component: LuposComponent, label: string): LuposEvent[] {
+		let events: Map<string, LuposEvent> = new Map()
 
 		for (let com of this.walkComponents(component)) {
-			for (let event of com.events.values()) {
-				if (event.name.startsWith(label) && !events.has(event.name)) {
+			for (let event of Object.values(com.events)) {
+				if (events.has(event.name)) {
+					continue
+				}
+
+				if (label || event.name.startsWith(label)) {
 					events.set(event.name, event)
 				}
 			}
@@ -376,17 +285,15 @@ export class LuposAnalyzer {
 		return [...events.values()]
 	}
 
-	/** Get all refs or slots properties outer class declaration contains given node. */
-	getSubPropertiesForCompletion(propertyName: 'refs' | 'slots', subPropertyNameLabel: string, tagName: string): LuposProperty[] | null {
-		let component = this.getComponent(tagName)
-		if (!component) {
-			return null
-		}
-
+	/** 
+	 * Get all refs or slots properties outer class declaration contains given node.
+	 * `label` can be empty, then will return all properties.
+	 */
+	getSubPropertiesForCompletion(component: LuposComponent, propertyName: 'slotElements', subPropertyNameLabel: string): LuposProperty[] {
 		let properties: Map<string, LuposProperty> = new Map()
 
 		for (let com of this.walkComponents(component)) {
-			for (let property of com[propertyName].values()) {
+			for (let property of Object.values(com[propertyName])) {
 				if (property.name.startsWith(subPropertyNameLabel) && !properties.has(property.name)) {
 					properties.set(property.name, property)
 				}
@@ -397,7 +304,7 @@ export class LuposAnalyzer {
 	}
 
 	/** Get a icon when it's defined file name matches label. */
-	getIconsForCompletion(label: string): FlitIcon[] {
+	getIconsForCompletion(label: string): LuposIcon[] {
 		return [...this.icons.values()].filter(icon => icon.name.startsWith(label))
 	}
 }

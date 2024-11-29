@@ -16,7 +16,7 @@ export class FlitDefinition {
 	getDefinition(token: FlitToken, contextNode: ts.Node): ts.DefinitionInfoAndBoundSpan | null {
 		// tag
 		if (token.type === FlitTokenType.StartTag) {
-			let component = this.analyzer.getComponent(token.attrName)
+			let component = this.analyzer.getComponentsByName(token.attrName)
 			return this.makeDefinitionInfo(component, token)
 		}
 
@@ -104,7 +104,7 @@ export class FlitDefinition {
 			token.end = token.start + 1 + bindingName.length
 			token.attrName = bindingName
 
-			let binding = this.analyzer.getBinding(token.attrName)
+			let binding = this.analyzer.getBindingsByName(token.attrName)
 			return binding
 		}
 		

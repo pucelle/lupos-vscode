@@ -40,14 +40,11 @@ export interface LuposComponent extends LuposItem {
 	readonly declaration: TS.ClassLikeDeclaration
 
 	/** Component public properties, not include properties of super class. */
-	readonly properties: Map<string, LuposProperty>
+	readonly properties: Record<string, LuposProperty>
 
 	/** Component events. */
-	readonly events: Map<string, LuposEvent>
+	readonly events: Record<string, LuposEvent>
 
-	/** Component refs. */
-	readonly refs: Map<string, LuposProperty>
-
-	/** Component slots. */
-	readonly slots: Map<string, LuposProperty>
+	/** Component slot elements. */
+	readonly slotElements: Record<string, LuposProperty>
 }

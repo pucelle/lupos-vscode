@@ -22,7 +22,7 @@ export class FlitQuickInfo {
 	getQuickInfo(token: FlitToken, contextNode: ts.Node): ts.QuickInfo | null {
 		// tag
 		if (token.type === FlitTokenType.StartTag) {
-			let component = this.analyzer.getComponent(token.attrName)
+			let component = this.analyzer.getComponentsByName(token.attrName)
 			return this.makeQuickInfo(component as {name: string, type: ts.Type, description: string}, token)
 		}
 
@@ -120,7 +120,7 @@ export class FlitQuickInfo {
 
 		// `:show`, without modifiers.
 		if (modifiers.length === 0) {
-			return this.analyzer.getBinding(token.attrName)
+			return this.analyzer.getBindingsByName(token.attrName)
 		}
 
 		// In `:style` range part.
@@ -128,7 +128,7 @@ export class FlitQuickInfo {
 			token.end = token.start + 1 + bindingName.length
 			token.attrName = bindingName
 
-			return this.analyzer.getBinding(token.attrName)
+			return this.analyzer.getBindingsByName(token.attrName)
 		}
 		
 		if (bindingName === 'style') {

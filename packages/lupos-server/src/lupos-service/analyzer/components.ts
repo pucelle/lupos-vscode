@@ -23,25 +23,25 @@ export function analyzeLuposComponents(sourceFile: TS.SourceFile, helper: Helper
 
 
 function createLuposComponent(node: TS.ClassDeclaration, helper: Helper): LuposComponent {
-	let properties: Map<string, LuposProperty> = new Map()
-	let events: Map<string, LuposEvent> = new Map()
-	let refs: Map<string, LuposProperty> = new Map()
-	let slots: Map<string, LuposProperty> = new Map()
+	let properties: Record<string, LuposProperty> = {}
+	let events: Record<string, LuposEvent> = {}
+	let refs: Record<string, LuposProperty> = {}
+	let slotElements: Record<string, LuposProperty> = {}
 
 	for (let event of analyzeLuposComponentEvents(node, helper)) {
-		events.set(event.name, event)
+		events[event.name] = event
 	}
 
 	for (let property of analyzeLuposComponentProperties(node, helper)) {
-		properties.set(property.name, property)
+		properties[property.name] = property
 	}
 
 	for (let ref of analyzeLuposComponentSubProperties(node, 'refs', helper) || []) {
-		refs.set(ref.name, ref)
+		refs[ref.name] = ref
 	}
 
-	for (let slot of analyzeLuposComponentSubProperties(node, 'slots', helper) || []) {
-		slots.set(slot.name, slot)
+	for (let slot of analyzeLuposComponentSubProperties(node, 'slotElements', helper) || []) {
+		slotElements[slot.name] = slot
 	}
 	
 	return {
@@ -51,10 +51,9 @@ function createLuposComponent(node: TS.ClassDeclaration, helper: Helper): LuposC
 		type: helper.types.typeOf(node),
 		description: helper.getNodeDescription(node),
 		sourceFile: node.getSourceFile(),
-		properties: new Map(),
-		events: new Map(),
-		slots: new Map(),
-		refs: new Map(),
+		properties,
+		events,
+		slotElements,
 	}
 }
 
