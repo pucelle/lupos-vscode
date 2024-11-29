@@ -27,8 +27,8 @@ export class TemplateEmbeddedRegions {
 			if (node.tagName === 'style') {
 				this.regions.push(this.createRegion(
 					'css',
-					node.start - this.template.start,
-					node.end - this.template.start,
+					node.start,
+					node.end,
 					false
 				))
 			}
@@ -45,8 +45,8 @@ export class TemplateEmbeddedRegions {
 
 					this.regions.push(this.createRegion(
 						'css',
-						node.start - this.template.start,
-						node.end - this.template.start,
+						node.start,
+						node.end,
 						true
 					))
 				}
@@ -56,7 +56,7 @@ export class TemplateEmbeddedRegions {
 		this.regions.push(this.createRegion(
 			this.template.tagName === 'css' ? 'css' : 'html',
 			0,
-			this.template.end - this.template.start,
+			this.template.content.length,
 			true
 		))
 	}

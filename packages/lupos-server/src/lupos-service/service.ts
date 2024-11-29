@@ -1,33 +1,26 @@
-import * as ts from 'typescript'
-import {FlitTokenScanner, FlitTokenType} from './toker-scanner'
-import {LanguageService as HTMLLanguageService} from 'vscode-html-languageservice'
+import * as TS from 'typescript'
 import {LuposAnalyzer} from './analyzer/analyzer'
-import {TextDocument} from 'vscode-languageserver-textdocument'
-import {TemplateContext} from '../shared-services'
-import {FlitCompletion} from './completion'
+import {LuposCompletion} from './completion'
 import {FlitQuickInfo} from './quickinfo'
 import {FlitDefinition} from './definition'
 import {ProjectContext} from '../core'
+import {Template} from '../template-service'
 
 
-/** Provide lupos language service. */
+/** Provide lupos language service for a single. */
 export class LuposService {
 
 	readonly context: ProjectContext
 
-	private scanner: FlitTokenScanner
 	private analyzer: LuposAnalyzer
-	private completion: FlitCompletion
+	private completion: LuposCompletion
 	private quickInfo: FlitQuickInfo
 	private flitDefinition: FlitDefinition
 
 	constructor(context: ProjectContext) {
 		this.context = context
-
-		this.scanner = new FlitTokenScanner(htmlService)
-		this.analyzer = new LuposAnalyzer(context.service)
-
-		this.completion = new FlitCompletion(this.analyzer)
+		this.analyzer = new LuposAnalyzer(context)
+		this.completion = new LuposCompletion(this.analyzer)
 		this.quickInfo = new FlitQuickInfo(this.analyzer)
 		this.flitDefinition = new FlitDefinition(this.analyzer)
 	}
@@ -37,22 +30,32 @@ export class LuposService {
 		this.analyzer.update()
 	}
 
-	getCompletions(context: TemplateContext, offset: number): ts.CompletionInfo | null {
-		let token = this.scanner.scanAt(context.document, position)
-		if (!token) {
+	getCompletions(template: Template, temOffset: number): TS.CompletionInfo | null {
+
+		// `<|`
+		if (template.content[temOffset - 1] === '<'
+			&& (temOffset === template.content.length - 1 || !/\w/.test(template.content[temOffset + 1]))
+		) {
+			this.beFresh()
+			return this.completion.getEmptyNameStartTagCompletions()
+		}
+
+		// `<N|`
+		let slot = template.getSlotAt(temOffset)
+		if (!slot) {
 			return null
 		}
 
 		this.beFresh()
 
-		return this.completion.getCompletions(token, context.node)
+		return this.completion.getSlotCompletions(slot)
 	}
 
-	getNonTemplateCompletions(fileName: string, offset: number): ts.CompletionInfo | null {
+	getNonTemplateCompletions(fileName: string, offset: number): TS.CompletionInfo | null {
 		return this.completion.getNonTemplateCompletions(fileName, offset)
 	}
 
-	getQuickInfo(context: TemplateContext, offset: number): ts.QuickInfo | null {
+	getQuickInfo(template: Template, offset: number): TS.QuickInfo | null {
 		let token = this.scanner.scanAt(context.document, position)
 		if (!token) {
 			return null
@@ -68,11 +71,11 @@ export class LuposService {
 		return this.quickInfo.getQuickInfo(token, context.node)
 	}
 
-	getNonTemplateQuickInfo(fileName: string, offset: number): ts.QuickInfo | null {
+	getNonTemplateQuickInfo(fileName: string, offset: number): TS.QuickInfo | null {
 		return this.quickInfo.getNonTemplateQuickInfo(fileName, offset)
 	}
 
-	getDefinition(context: TemplateContext, offset: number): ts.DefinitionInfoAndBoundSpan | null {
+	getDefinition(template: Template, offset: number): TS.DefinitionInfoAndBoundSpan | null {
 		let token = this.scanner.scanAt(context.document, position)
 		if (!token) {
 			return null

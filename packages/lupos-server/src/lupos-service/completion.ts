@@ -1,6 +1,4 @@
-import * as ts from 'typescript'
-import {FlitToken, FlitTokenType} from './toker-scanner'
-import {LuposAnalyzer} from './analyzer/analyzer'
+import type * as TS from 'typescript'
 import {DOMElementEvents} from '../complete-data/dom-element-events'
 import {LuposBindingModifiers} from '../complete-data/lupos-binding-modifiers'
 import {DOMStyleProperties} from '../complete-data/dom-style-properties'
@@ -9,83 +7,95 @@ import {LuposDomEventModifiers, LuposEventCategories} from '../complete-data/lup
 import {DOMBooleanAttributes} from '../complete-data/dom-boolean-attributes'
 import {findNodeAscent} from '../ts-utils/_ast-utils'
 import {getSimulateTokenFromNonTemplate} from './non-template'
+import {TemplateSlot, TemplateSlotType} from '../lupos-ts-module'
+import {ProjectContext} from '../core'
+import {LuposAnalyzer} from './analyzer'
 
 
 /** Provide flit completion service. */
-export class FlitCompletion {
+export class LuposCompletion {
 
-	constructor(
-		private readonly analyzer: LuposAnalyzer,
-		private readonly typescript: typeof ts
-	) {}
+	readonly analyzer: LuposAnalyzer
+	readonly context: ProjectContext
+
+	constructor(analyzer: LuposAnalyzer) {
+		this.analyzer = analyzer
+		this.context = analyzer.context
+	}
+
+	/** `<|`, hasn't input any start tag name. */
+	getEmptyNameStartTagCompletions(): TS.CompletionInfo | null {
+		let components = this.analyzer.getComponentsForCompletion('')
+		return this.makeCompletionInfo(components)
+	}
 	
-	getCompletions(token: FlitToken, contextNode: ts.Node): ts.CompletionInfo | null {
+	getSlotCompletions(slot: TemplateSlot): TS.CompletionInfo | null {
 		
 		// <
-		if (token.type === FlitTokenType.StartTagOpen) {
+		if (slot.type === TemplateSlotType.StartTagOpen) {
 			let components = this.analyzer.getComponentsForCompletion('')
-			return this.makeCompletionInfo(components, token)
+			return this.makeCompletionInfo(components, slot)
 		}
 
 		// tag
-		else if (token.type === FlitTokenType.StartTag) {
-			let components = this.analyzer.getComponentsForCompletion(token.attrName)
-			return this.makeCompletionInfo(components, token)
+		else if (slot.type === TemplateSlotType.StartTag) {
+			let components = this.analyzer.getComponentsForCompletion(slot.attrName)
+			return this.makeCompletionInfo(components, slot)
 		}
 
 		// :xxx
-		else if (token.type === FlitTokenType.Binding) {
-			let items = this.getBindingCompletionItems(token, contextNode)
-			return this.makeCompletionInfo(items, token)
+		else if (slot.type === TemplateSlotType.Binding) {
+			let items = this.getBindingCompletionItems(slot, contextNode)
+			return this.makeCompletionInfo(items, slot)
 		}
 
 		// .xxx
-		else if (token.type === FlitTokenType.Property) {
-			let items = this.getPropertyCompletionInfo(token)
-			return this.makeCompletionInfo(items, token)
+		else if (slot.type === TemplateSlotType.Property) {
+			let items = this.getPropertyCompletionInfo(slot)
+			return this.makeCompletionInfo(items, slot)
 		}
 
 		// xxx="|"
-		else if (token.attrValue !== null) {
+		else if (slot.attrValue !== null) {
 			return null
 		}
 
 		// ?xxx
-		else if (token.type === FlitTokenType.BooleanAttribute) {
-			let properties = filterBooleanAttributeForCompletion(token.attrName, token.tagName)
-			let items = addSuffixProperty(properties, '=', token)
+		else if (slot.type === TemplateSlotType.BooleanAttribute) {
+			let properties = filterBooleanAttributeForCompletion(slot.attrName, slot.tagName)
+			let items = addSuffixProperty(properties, '=', slot)
 
-			return this.makeCompletionInfo(items, token)
+			return this.makeCompletionInfo(items, slot)
 		}
 
 		// @xxx
-		else if (token.type === FlitTokenType.DomEvent) {
-			let items = this.getEventCompletionItems(token) as {name: string, description: string | null}[]
+		else if (slot.type === TemplateSlotType.DomEvent) {
+			let items = this.getEventCompletionItems(slot) as {name: string, description: string | null}[]
 
-			if (token.tagName.includes('-') && !token.attrName.includes('.')) {
-				let comEvents = this.analyzer.getComponentEventsForCompletion(token.attrName, token.tagName) || []
+			if (slot.tagName.includes('-') && !slot.attrName.includes('.')) {
+				let comEvents = this.analyzer.getComponentEventsForCompletion(slot.attrName, slot.tagName) || []
 				let atComEvents = comEvents.map(item => ({name: '@' + item.name, description: item.description}))
 
 				items.unshift(
-					...addSuffixProperty(atComEvents, '=', token)
+					...addSuffixProperty(atComEvents, '=', slot)
 				)
 			}
 
-			return this.makeCompletionInfo(items, token)
+			return this.makeCompletionInfo(items, slot)
 		}
 
 		// @@xxx
-		else if (token.type === FlitTokenType.ComEvent) {
-			let comEvents = this.analyzer.getComponentEventsForCompletion(token.attrName, token.tagName) || []
-			let info = addSuffixProperty(comEvents, '=', token)
+		else if (slot.type === TemplateSlotType.ComEvent) {
+			let comEvents = this.analyzer.getComponentEventsForCompletion(slot.attrName, slot.tagName) || []
+			let info = addSuffixProperty(comEvents, '=', slot)
 
-			return this.makeCompletionInfo(info, token)
+			return this.makeCompletionInfo(info, slot)
 		}
 
 		return null
 	}
 
-	private getBindingCompletionItems(token: FlitToken, contextNode: ts.Node) {
+	private getBindingCompletionItems(token: FlitToken, contextNode: TS.Node) {
 		let [bindingName, modifiers] = splitPropertyAndModifiers(token.attrName)
 
 		// `:ref="|"`.
@@ -103,7 +113,7 @@ export class FlitCompletion {
 
 				// Get ancestor class declaration.
 				if (token.attrName === 'ref') {
-					let declaration = findNodeAscent(contextNode, child => this.typescript.isClassLike(child)) as ts.ClassLikeDeclaration
+					let declaration = findNodeAscent(contextNode, child => this.typescript.isClassLike(child)) as TS.ClassLikeDeclaration
 					if (!declaration) {
 						return null
 					}
@@ -125,7 +135,7 @@ export class FlitCompletion {
 
 			// `:model="|"`.
 			else if (['model', 'refComponent'].includes(token.attrName)) {
-				let declaration = findNodeAscent(contextNode, child => this.typescript.isClassLike(child)) as ts.ClassLikeDeclaration
+				let declaration = findNodeAscent(contextNode, child => this.typescript.isClassLike(child)) as TS.ClassLikeDeclaration
 				if (!declaration) {
 					return null
 				}
@@ -266,16 +276,16 @@ export class FlitCompletion {
 	private makeCompletionInfo(
 		items: {name: string, description: string | null, suffix?: string}[] | null,
 		token: FlitToken,
-	): ts.CompletionInfo | null {
+	): TS.CompletionInfo | null {
 		if (!items) {
 			return null
 		}
 
-		let entries: ts.CompletionEntry[] = items.map(item => {
+		let entries: TS.CompletionEntry[] = items.map(item => {
 			let name = token.attrPrefix + item.name
 			let kind = getScriptElementKindFromToken(token, this.typescript)
 
-			let replacementSpan: ts.TextSpan = {
+			let replacementSpan: TS.TextSpan = {
 				start: token.start,
 				length: token.end - token.start,
 			}
@@ -297,10 +307,10 @@ export class FlitCompletion {
 		}
 	}
 
-	getNonTemplateCompletions(fileName: string, offset: number): ts.CompletionInfo | null {
+	getNonTemplateCompletions(fileName: string, offset: number): TS.CompletionInfo | null {
 		let simulateToken = getSimulateTokenFromNonTemplate(fileName, offset, this.analyzer.program, this.typescript)
 		if (simulateToken) {
-			return this.getCompletions(simulateToken.token, simulateToken.node)
+			return this.getSlotCompletions(simulateToken.token, simulateToken.node)
 		}
 
 		return null

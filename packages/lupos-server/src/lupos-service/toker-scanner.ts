@@ -51,10 +51,6 @@ export enum FlitTokenType {
 
 export class FlitTokenScanner {
 
-	constructor(
-		private readonly htmlLanguageService: HTMLLanguageService
-	) {}
-	
 	scanAt(document: TextDocument, position: ts.LineAndCharacter): FlitToken | null {
 		let offset = document.offsetAt(position)
 		let scanner = this.htmlLanguageService.createScanner(document.getText())
