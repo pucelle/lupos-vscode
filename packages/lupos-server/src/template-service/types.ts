@@ -87,28 +87,6 @@ export interface TemplateLanguageService {
 		template: Template,
 		offset: number,
 	): TS.JsxClosingTagInfo | undefined
-
-
-	/** Triggers when not in template context, must returns `undefined` if no completion result. */
-	getNonTemplateCompletionsAtPosition?(
-		fileName: string,
-		offset: number,
-		options?: TS.GetCompletionsAtPositionOptions
-	): TS.CompletionInfo | undefined
-
-	/** Triggers when not in template context, must returns `undefined` if no completion result. */
-	getNonTemplateCompletionEntryDetails?(
-		fileName: string,
-		offset: number,
-		name: string,
-		options?: TS.FormatCodeSettings
-	): TS.CompletionEntryDetails | undefined
-
-	/** Triggers when not in template context, must returns `undefined` if no completion result. */
-	getNonTemplateQuickInfoAtPosition?(
-		fileName: string,
-		offset: number,
-	): TS.QuickInfo | undefined
 }
 
 

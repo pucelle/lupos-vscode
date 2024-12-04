@@ -1,18 +1,13 @@
 import type * as TS from 'typescript'
-import {DOMElementEvents} from '../complete-data/dom-element-events'
-import {LuposBindingModifiers} from '../complete-data/lupos-binding-modifiers'
-import {DOMStyleProperties} from '../complete-data/dom-style-properties'
-import {getScriptElementKindFromToken, splitPropertyAndModifiers} from './utils'
-import {LuposDomEventModifiers, LuposEventCategories} from '../complete-data/lupos-dom-event-modifiers'
-import {DOMBooleanAttributes} from '../complete-data/dom-boolean-attributes'
-import {findNodeAscent} from '../ts-utils/_ast-utils'
-import {getSimulateTokenFromNonTemplate} from './non-template'
-import {TemplateSlot, TemplateSlotType} from '../lupos-ts-module'
+import {getScriptElementKindFromToken} from './utils'
+import {TemplatePart, TemplatePartType, TemplateSlotPlaceholder, TemplatePartLocation, TemplatePartLocationType} from '../lupos-ts-module'
 import {ProjectContext} from '../core'
 import {LuposAnalyzer} from './analyzer'
+import {LuposSimulatedEvents, filterCompletionItems, LuposControlFlowTags, LuposDomEventModifiers, LuposEventCategories, DOMStyleProperties, DOMElementEvents, LuposBindingModifiers, assignCompletionItems, filterBooleanAttributeCompletionItems, getBindingModifierCompletionItems} from '../complete-data'
+import {Template} from '../template-service'
 
 
-/** Provide flit completion service. */
+/** Provide lupos completion service. */
 export class LuposCompletion {
 
 	readonly analyzer: LuposAnalyzer
@@ -23,280 +18,317 @@ export class LuposCompletion {
 		this.context = analyzer.context
 	}
 
-	/** `<|`, hasn't input any start tag name. */
-	getEmptyNameStartTagCompletions(): TS.CompletionInfo | null {
-		let components = this.analyzer.getComponentsForCompletion('')
-		return this.makeCompletionInfo(components)
-	}
-	
-	getSlotCompletions(slot: TemplateSlot): TS.CompletionInfo | null {
+	getCompletions(part: TemplatePart, location: TemplatePartLocation, template: Template): TS.CompletionInfo | undefined {
 		
-		// <
-		if (slot.type === TemplateSlotType.StartTagOpen) {
-			let components = this.analyzer.getComponentsForCompletion('')
-			return this.makeCompletionInfo(components, slot)
+		// `<a|`, `<|`, `<A|`, `<lu:|`
+		if (part.type === TemplatePartType.Component
+			|| part.type === TemplatePartType.DynamicComponent
+			|| part.type === TemplatePartType.FlowControl
+			|| part.type === TemplatePartType.SlotTag
+			|| part.type === TemplatePartType.NormalStartTag
+		) {
+			let components = this.analyzer.getComponentsForCompletion(part.mainName!)
+			let flowControlItems = filterCompletionItems(LuposControlFlowTags, part.mainName!)
+
+			return this.makeCompletionInfo([...components, ...flowControlItems], part, location)
 		}
 
-		// tag
-		else if (slot.type === TemplateSlotType.StartTag) {
-			let components = this.analyzer.getComponentsForCompletion(slot.attrName)
-			return this.makeCompletionInfo(components, slot)
+		// `:binding`, `?:binding`
+		else if (part.type === TemplatePartType.Binding) {
+			let items = this.getBindingCompletionItems(part, location, template)
+			return this.makeCompletionInfo(items, part, location)
 		}
 
-		// :xxx
-		else if (slot.type === TemplateSlotType.Binding) {
-			let items = this.getBindingCompletionItems(slot, contextNode)
-			return this.makeCompletionInfo(items, slot)
+		// `?xxx`
+		else if (part.type === TemplatePartType.QueryAttribute) {
+			let items = this.getQueryAttributeCompletionItems(part, location)
+			return this.makeCompletionInfo(items, part, location)
 		}
 
-		// .xxx
-		else if (slot.type === TemplateSlotType.Property) {
-			let items = this.getPropertyCompletionInfo(slot)
-			return this.makeCompletionInfo(items, slot)
+		// `.xxx`
+		else if (part.type === TemplatePartType.Property) {
+			let items = this.getPropertyCompletionInfo(part, location, template)
+			return this.makeCompletionInfo(items, part, location)
 		}
 
-		// xxx="|"
-		else if (slot.attrValue !== null) {
-			return null
+		// `@xxx` or `@@xxx`
+		else if (part.type === TemplatePartType.Event) {
+			let items = this.getEventCompletionItems(part, location, template)
+			return this.makeCompletionInfo(items, part, location)
 		}
 
-		// ?xxx
-		else if (slot.type === TemplateSlotType.BooleanAttribute) {
-			let properties = filterBooleanAttributeForCompletion(slot.attrName, slot.tagName)
-			let items = addSuffixProperty(properties, '=', slot)
-
-			return this.makeCompletionInfo(items, slot)
-		}
-
-		// @xxx
-		else if (slot.type === TemplateSlotType.DomEvent) {
-			let items = this.getEventCompletionItems(slot) as {name: string, description: string | null}[]
-
-			if (slot.tagName.includes('-') && !slot.attrName.includes('.')) {
-				let comEvents = this.analyzer.getComponentEventsForCompletion(slot.attrName, slot.tagName) || []
-				let atComEvents = comEvents.map(item => ({name: '@' + item.name, description: item.description}))
-
-				items.unshift(
-					...addSuffixProperty(atComEvents, '=', slot)
-				)
-			}
-
-			return this.makeCompletionInfo(items, slot)
-		}
-
-		// @@xxx
-		else if (slot.type === TemplateSlotType.ComEvent) {
-			let comEvents = this.analyzer.getComponentEventsForCompletion(slot.attrName, slot.tagName) || []
-			let info = addSuffixProperty(comEvents, '=', slot)
-
-			return this.makeCompletionInfo(info, slot)
-		}
-
-		return null
+		return undefined
 	}
 
-	private getBindingCompletionItems(token: FlitToken, contextNode: TS.Node) {
-		let [bindingName, modifiers] = splitPropertyAndModifiers(token.attrName)
+	private getBindingCompletionItems(part: TemplatePart, location: TemplatePartLocation, template: Template) {
+		let mainName = part.mainName!
+		let items: CompletionItem[] = []
 
-		// `:ref="|"`.
-		if (token.attrValue !== null) {
-			let attrValue = token.attrValue.replace(/^['"](.*?)['"]$/, '$1')
+		// `:name|`, complete binding name.
+		if (location.type === TemplatePartLocationType.Name) {
+			let bindingItems = this.analyzer.getBindingsForCompletion(mainName)
 
-			// Moves token range to `"|???|"`.
-			token.attrPrefix = ''
-			token.start += 1
-			token.end -= 1
+			// `:|` - complete from here
+			items.push(...assignCompletionItems(bindingItems, location))
 
-			if (['ref', 'slot'].includes(token.attrName)) {
-				let customTagName: string | null = null
-				let componentPropertyName = token.attrName + 's' as 'refs' | 'slots'
-
-				// Get ancestor class declaration.
-				if (token.attrName === 'ref') {
-					let declaration = findNodeAscent(contextNode, child => this.typescript.isClassLike(child)) as TS.ClassLikeDeclaration
-					if (!declaration) {
-						return null
-					}
-
-					customTagName = this.analyzer.getComponentByDeclaration(declaration)?.name || null
-				}
-				// Get closest component tag.
-				else {
-					customTagName = token.closestCustomTagName
-				}
-
-				if (!customTagName) {
-					return null
-				}
-
-				let items = this.analyzer.getSubPropertiesForCompletion(componentPropertyName, attrValue, customTagName)
-				return items
-			}
-
-			// `:model="|"`.
-			else if (['model', 'refComponent'].includes(token.attrName)) {
-				let declaration = findNodeAscent(contextNode, child => this.typescript.isClassLike(child)) as TS.ClassLikeDeclaration
-				if (!declaration) {
-					return null
-				}
-
-				let customTagName = this.analyzer.getComponentByDeclaration(declaration)?.name || null
-				if (!customTagName) {
-					return null
-				}
-
-				let items = this.analyzer.getComponentPropertiesForCompletion(attrValue, customTagName, false)
-				return items
+			// `:class|=`, complete with `=`.
+			let fullyMatched = bindingItems.find(item => item.name === mainName)
+			if (fullyMatched) {
+				items.push({name: '=', description: '', start: part.end})
 			}
 		}
-		
-		// `:show`, without modifiers.
-		if (modifiers.length === 0) {
-			let bindings = this.analyzer.getBindingsForCompletion(token.attrName)
-			let items = addSuffixProperty(bindings, '=', token)
 
-			// `:class` or `:style`, `:model` may have `.` followed.
-			items.forEach(item => {
-				if (item.name === 'class' || LuposBindingModifiers.hasOwnProperty(item.name)) {
-					item.suffix = ''
-				}
-			})
-
-			return items
+		// `:ref.|`, complete modifiers.
+		else if (location.type === TemplatePartLocationType.Modifier) {
+			items.push(...this.getBindingModifierCompletionItems(part, location, template))
 		}
 
-		if (bindingName === 'style') {
-			// Complete modifiers.
-			if (modifiers.length === 1) {
-
-				// Move cursor to `:style|.`
-				token.start += 1 + bindingName.length
-				token.attrPrefix = '.'
-
-				let items = filterForCompletion(DOMStyleProperties, modifiers[0])
-				return items
-			}
-
-			// Complete style property.
-			else {
-
-				// Move cursor to `:style.font-size|.`
-				token.start += 1 + bindingName.length + 1 + modifiers[0].length
-				token.attrPrefix = '.'
-
-				let items = filterForCompletion(LuposBindingModifiers.style, modifiers[modifiers.length - 1])
-				return addSuffixProperty(items, '=', token)
-			}
-		}
-		else if (bindingName === 'model') {
-
-			// Move cursor to `:model???|.`
-			token.start = token.end - (1 + modifiers[modifiers.length - 1].length)
-			token.attrPrefix = '.'
-
-			let items = filterForCompletion(LuposBindingModifiers.model, modifiers[modifiers.length - 1])
-			return items
+		// `:slot="|"`.
+		else if (location.type === TemplatePartLocationType.AttrValue) {
+			items.push(...this.getBindingAttrValueCompletionItems(part, location, template))
 		}
 
 		// Completion of `:class` will be handled by `CSS Navigation` plugin.
 
-		return null
+		return items
 	}
 
-	private getPropertyCompletionInfo(token: FlitToken) {
-		// If `.property="|"`.
-		if (token.attrValue !== null) {
-			let attrValue = token.attrValue.replace(/^['"](.*?)['"]$/, '$1')
+	private getBindingModifierCompletionItems(part: TemplatePart, location: TemplatePartLocation, template: Template) {
+		let modifiers = part.modifiers!
+		let mainName = part.mainName!
+		let items: CompletionItem[] = []
+		let modifierIndex = location.modifierIndex!
+		let modifierValue = modifiers[modifierIndex]
 
-			// Moves token range to `"|???|"`.
-			token.attrPrefix = ''
-			token.start += 1
-			token.end -= 1
+		// `:style`
+		if (mainName === 'style') {
 
-			// For `<f-icon .type="|">`
-			if (token.tagName.includes('icon') && token.attrName === 'type') {
-				let icons = this.analyzer.getIconsForCompletion(attrValue)
-				return icons
+			// Complete style property.
+			if (modifierIndex === 0) {
+				let filtered = filterCompletionItems(DOMStyleProperties, modifierValue)
+				items.push(...assignCompletionItems(filtered, location))
 			}
 
-			// For `type="a" | "b" | "c"`
-			else {
-				let property = this.analyzer.getComponentProperty(token.attrName, token.tagName)
-				if (!property) {
-					return null
-				}
-
-				let typeStringList = this.analyzer.getTypeUnionStringList(property.type)
-
-				return typeStringList.map(name => {
-					return {
-						name,
-						description: null,
-					}
-				})
+			// Complete style unit.
+			else if (modifierIndex === 1) {
+				let filtered = filterCompletionItems(LuposBindingModifiers.style, modifierValue)
+				items.push(...assignCompletionItems(filtered, location))
 			}
 		}
 
-		// .property|
+		// Not `:style`
 		else {
-			let properties = this.analyzer.getComponentPropertiesForCompletion(token.attrName, token.tagName) || []
-			return properties
+				
+			// Local declared.
+			let binding = this.analyzer.getBindingByNameAndTemplate(mainName, template)
+
+			// All available parameters from binding constructor.
+			let availableModifiers: string[] | null = null
+
+			// Try parse bind class modifiers parameter.
+			if (binding) {
+				let bindingClassParams = this.context.helper.class.getConstructorParameters(binding.declaration)
+				let modifiersParamType = bindingClassParams && bindingClassParams.length === 3 ? bindingClassParams[2].type : null
+
+				availableModifiers = modifiersParamType ?
+					this.context.helper.types.splitUnionTypeToStringList(this.context.helper.types.typeOfTypeNode(modifiersParamType)!)
+					: null
+			}
+
+			// Use known binding modifiers.
+			if (!availableModifiers) {
+				availableModifiers = LuposBindingModifiers[mainName]?.map(item => item.name)
+			}
+
+			// Make normal modifier items.
+			let modifierItems = getBindingModifierCompletionItems(mainName, modifiers, availableModifiers)
+			let filtered = filterCompletionItems(modifierItems, modifierValue)
+			items.push(...assignCompletionItems(filtered, location))
 		}
+
+		// Completion of `:class` will be handled by `CSS Navigation` plugin.
+
+		return items
+	}
+
+	// `:slot="|"`.
+	private getBindingAttrValueCompletionItems(part: TemplatePart, location: TemplatePartLocation, template: Template) {
+		let attr = part.attr!
+		let mainName = part.mainName!
+		let attrValue = attr.value!
+		let items: CompletionItem[] = []
+
+		// :slot="|name"
+		if (['slot'].includes(mainName)) {
+			let currentComponent = this.analyzer.getComponentByDeclaration(template.component)!
+			let propertyItems = this.analyzer.getSubPropertiesForCompletion(currentComponent, 'slotElements', attrValue)
+
+			items.push(...assignCompletionItems(propertyItems, location))
+		}
+
+		return items
+	}
+
+	private getQueryAttributeCompletionItems(part: TemplatePart, location: TemplatePartLocation) {
+		let items: CompletionItem[] = []
+
+		if (location.type === TemplatePartLocationType.Name) {
+			let properties = filterBooleanAttributeCompletionItems(part.mainName!, part.node.tagName!)
+
+			items.push(...assignCompletionItems(properties, {start: part.start + 1}))
+
+			// `?|:`
+			items.push({
+				name: ':',
+				description: '',
+				start: part.end,
+			})
+		}
+
+		return items
+	}
+
+	private getPropertyCompletionInfo(part: TemplatePart, location: TemplatePartLocation, template: Template) {
+		let attr = part.attr!
+		let mainName = part.mainName!
+		let items: CompletionItem[] = []
+
+		
+		// `.|property|`, complete property name.
+		if (location.type === TemplatePartLocationType.Name) {
+			let components = this.analyzer.getComponentsByTagName(part.node.tagName!, template)
+
+			for (let component of components) {
+				let properties = this.analyzer.getComponentPropertiesForCompletion(component, mainName)
+				items.push(...assignCompletionItems(properties, location))
+			}
+		}
+
+		// `.property="|"`, complete property value.
+		else if (location.type === TemplatePartLocationType.AttrValue) {
+			let attrValue = attr.value!
+
+			// For `<Icon .type="|">`
+			if (part.node.tagName!.includes('Icon') && mainName === 'type') {
+				let iconItems = this.analyzer.getIconsForCompletion(attrValue)
+				items.push(...assignCompletionItems(iconItems, location))
+			}
+
+			// For `.prop="a" | "b" | "c"`
+			else {
+				let components = this.analyzer.getComponentsByTagName(part.node.tagName!, template)
+
+				for (let component of components) {
+					let property = this.analyzer.getComponentProperty(component, mainName)
+					if (!property) {
+						continue
+					}
+
+					let typeStringList = this.context.helper.types.splitUnionTypeToStringList(property.type)
+
+					let typeItems = typeStringList.map(name => {
+						return {
+							name,
+							description: '',
+						}
+					})
+
+					items.push(...assignCompletionItems(typeItems, location))
+				}
+			}
+		}
+
+		return items
 	}
 	
-	private getEventCompletionItems(token: FlitToken) {
-		let [eventName, modifiers] = splitPropertyAndModifiers(token.attrName)
+	private getEventCompletionItems(part: TemplatePart, location: TemplatePartLocation, template: Template) {
+		let modifiers = part.modifiers!
+		let mainName = part.mainName!
+		let tagName = part.node.tagName!
+		let items: CompletionItem[] = []
+		let isComponent = TemplateSlotPlaceholder.isComponent(tagName)
+		let components = isComponent ? [...this.analyzer.getComponentsByTagName(tagName, template)] : []
+		let domEvents = filterCompletionItems(DOMElementEvents, mainName)
 
-		// `@click`, without modifiers.
-		if (modifiers.length === 0) {
-			let items = filterForCompletion(DOMElementEvents, token.attrName)
-			return items
+		// `@cli|`, complete event name.
+		if (location.type === TemplatePartLocationType.Name) {
+			let comEvents = components.map(com => this.analyzer.getComponentEventsForCompletion(com, mainName)).flat()
+			let simEvents = filterCompletionItems(LuposSimulatedEvents, mainName)
+			let eventItems = [...comEvents, ...domEvents, ...simEvents]
+		
+			items.push(...assignCompletionItems(eventItems, location))
+
+			// `:class|=`, complete with `=`.
+			let fullyMatched = eventItems.find(item => item.name === mainName)
+			if (fullyMatched) {
+				items.push({name: '=', description: '', start: part.end})
+			}
 		}
 
-		// `@click.l`, with modifiers.
-		else {
+		// `@click.`, complete modifiers.
+		else if (location.type === TemplatePartLocationType.Modifier) {
+			let modifierIndex = location.modifierIndex!
+			let modifierValue = modifiers[modifierIndex]
+			let previousModifierValue = modifierIndex > 0 ? modifiers[modifierIndex - 1] : null
 
-			// Move cursor to `@click???|.l`
-			token.start = token.end - (1 + modifiers[modifiers.length - 1].length)
-			token.attrPrefix = '.'
-
-			// .passive, .stop, ...
-			let items = filterForCompletion(LuposDomEventModifiers.global, modifiers[modifiers.length - 1])
-
-			// .left, .right.
-			if (LuposEventCategories[eventName]) {
-				let category = LuposEventCategories[eventName]
-				items.push(...filterForCompletion(LuposDomEventModifiers[category], modifiers[modifiers.length - 1]))
+			// Only `@click.Ctrl+|`, not for `@click.Ctrl+K|`.
+			if (previousModifierValue && LuposDomEventModifiers.controlKey.find(item => item.name === previousModifierValue)) {
+				let keyItems = filterCompletionItems(LuposDomEventModifiers.keyCode, '')
+				items.push(...assignCompletionItems(keyItems, location))
 			}
 
-			return items
+			else {
+				// `.passive`, `.stop`, ...
+				let globalItems = filterCompletionItems(LuposDomEventModifiers.global, modifierValue)
+				globalItems = globalItems.filter(item => !modifiers.includes(item.name))
+				items.push(...assignCompletionItems(globalItems, location))
+
+				// `@keydown.Enter`, `@click.left`.
+				if (LuposEventCategories[mainName]) {
+					let category = LuposEventCategories[mainName]
+					let categoryItems = filterCompletionItems(LuposDomEventModifiers[category], mainName)
+					items.push(...assignCompletionItems(categoryItems, location))
+				}
+			}
 		}
+
+		return items
 	}
 
-	private makeCompletionInfo(
-		items: {name: string, description: string | null, suffix?: string}[] | null,
-		token: FlitToken,
-	): TS.CompletionInfo | null {
+	private makeCompletionInfo(items: CompletionItem[] | undefined, part: TemplatePart, location: TemplatePartLocation): TS.CompletionInfo | undefined {
 		if (!items) {
-			return null
+			return undefined
 		}
 
+		let names: Set<string> = new Set()
+
 		let entries: TS.CompletionEntry[] = items.map(item => {
-			let name = token.attrPrefix + item.name
-			let kind = getScriptElementKindFromToken(token, this.typescript)
+			let kind = getScriptElementKindFromToken(part, location)
+			let start = item.start ?? part.start
+			let end = item.end ?? part.end
 
 			let replacementSpan: TS.TextSpan = {
-				start: token.start,
-				length: token.end - token.start,
+				start,
+				length: end - start,
 			}
 
 			return {
-				name,
+				name: item.name,
 				kind,
 				sortText: item.name,
-				insertText: name + (item.suffix || ''),
+				insertText: item.name,
 				replacementSpan,
 			}
+		})
+
+		// Filter out repetitive items.
+		entries = entries.filter(item => {
+			if (names.has(item.name)) {
+				return false
+			}
+
+			names.add(item.name)
+			return true
 		})
 
 		return {
@@ -306,42 +338,4 @@ export class LuposCompletion {
 			entries: entries,
 		}
 	}
-
-	getNonTemplateCompletions(fileName: string, offset: number): TS.CompletionInfo | null {
-		let simulateToken = getSimulateTokenFromNonTemplate(fileName, offset, this.analyzer.program, this.typescript)
-		if (simulateToken) {
-			return this.getSlotCompletions(simulateToken.token, simulateToken.node)
-		}
-
-		return null
-	}
-}
-
-
-function filterForCompletion<T extends {name: string}>(items: T[], label: string): T[] {
-	return items.filter(item => item.name.startsWith(label))
-}
-
-
-function filterBooleanAttributeForCompletion(label: string, tagName: string): CompleteBooleanAttribute[] {
-	return DOMBooleanAttributes.filter(item => {
-		if (item.forElements && !item.forElements.includes(tagName)) {
-			return false
-		}
-
-		return item.name.startsWith(label)
-	})
-}
-
-
-function addSuffixProperty(items: {name: string, description: string | null}[], suffix: string, token: FlitToken) {
-	if (suffix && token.nextTokenString.startsWith(suffix)) {
-		suffix = ''
-	}
-
-	return items.map(item => ({
-		name: item.name,
-		description: item.description,
-		suffix,
-	}))
 }

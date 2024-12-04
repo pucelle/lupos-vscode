@@ -1,7 +1,7 @@
 import type * as TS from 'typescript'
 import {Template} from './template'
 import {ts, ProjectContext, PluginConfig} from '../core'
-import {WeakerPairKeysMap} from '../lupos-ts-module'
+import {ScopeTree, WeakerPairKeysMap} from '../lupos-ts-module'
 
 
 /** 
@@ -11,13 +11,17 @@ import {WeakerPairKeysMap} from '../lupos-ts-module'
 export class TemplateProvider {
 
 	readonly context: ProjectContext
-	private readonly cache: TemplateContextCache = new TemplateContextCache()
+	private sourceFileCache: SourceFileCache = new SourceFileCache()
+	private templateCache: TemplateCache
+	private scopeTreeCache: ScopeTreeCache
 
 	constructor(context: ProjectContext) {
 		this.context = context
+		this.templateCache = new TemplateCache(this.sourceFileCache)
+		this.scopeTreeCache = new ScopeTreeCache(this.sourceFileCache)
 	}
 
-	/** Get a TemplateContext from specified offset position of source file. */
+	/** Get a Template from specified offset position of source file. */
 	getTemplateAt(fileName: string, offset: number): Template | null {
 		let sourceFile = this.context.projectHelper.getSourceFile(fileName)
 		let taggedNode = this.getTaggedNodeAt(fileName, offset)
@@ -26,14 +30,14 @@ export class TemplateProvider {
 			return null
 		}
 
-		let context = this.cache.get(sourceFile, taggedNode)
+		let template = this.templateCache.get(sourceFile, taggedNode)
 
-		if (!context) {
-			context = this.createTemplate(taggedNode)
-			this.cache.add(sourceFile, taggedNode, context)
+		if (!template) {
+			template = this.createTemplate(taggedNode)
+			this.templateCache.add(sourceFile, taggedNode, template)
 		}
 
-		return context
+		return template
 	}
 
 	/** Get template node, but limit only the literal part. */
@@ -72,15 +76,17 @@ export class TemplateProvider {
 	private createTemplate(taggedNode: TS.TaggedTemplateExpression) {
 		let templateLiteral = taggedNode.template
 		let tagName = taggedNode.tag.getText() as 'html' | 'css' | 'svg'
+		let scopeTree = this.getScopeTreeBy(taggedNode.getSourceFile())
 
 		return new Template(
 			tagName,
 			templateLiteral,
+			scopeTree,
 			this.context,
 		)
 	}
 
-	/** Get all TemplateContext from source file. */
+	/** Get all Template from source file. */
 	getAllTemplates(fileName: string): Template[] {
 		let sourceFile = this.context.projectHelper.getSourceFile(fileName)
 		if (!sourceFile) {
@@ -92,63 +98,127 @@ export class TemplateProvider {
 
 		return taggedNodes.map(node => this.createTemplate(node))
 	}
+
+	/** Get ScopeTree from specified source file. */
+	getScopeTreeBy(sourceFile: TS.SourceFile): ScopeTree {
+		let scopeTree = this.scopeTreeCache.get(sourceFile)
+
+		if (!scopeTree) {
+			scopeTree = this.createScopeTree(sourceFile)
+			this.scopeTreeCache.add(sourceFile, scopeTree)
+		}
+
+		return scopeTree
+	}
+
+	private createScopeTree(sourceFile: TS.SourceFile) {
+		let scopeTree = new ScopeTree(this.context.helper)
+		scopeTree.visitSourceFile(sourceFile)
+
+		return scopeTree
+	}
 }
 
 
 /** 
- * If source file not changed, can keep template context in cache.
+ * If source file not changed, can know cache is valid.
  * If source file not touched for 5 minutes, clear cache.
  */
-class TemplateContextCache {
+class SourceFileCache {
 
-	private cache: WeakerPairKeysMap<TS.SourceFile, TS.TaggedTemplateExpression, Template> = new WeakerPairKeysMap()
 	private cachedSize: WeakMap<TS.SourceFile, number> = new WeakMap()
 	private timeouts: WeakMap<TS.SourceFile, NodeJS.Timeout> = new WeakMap()
 
-	get(sourceFile: TS.SourceFile, taggedNode: TS.TaggedTemplateExpression): Template | undefined {
-		if (!this.cache.hasKey(sourceFile)) {
-			return undefined
-		}
-
+	cache(sourceFile: TS.SourceFile) {
+		this.cachedSize.set(sourceFile, sourceFile.getFullWidth())
 		this.resetTimeout(sourceFile)
+	}
 
-		let tc = this.cache.get(sourceFile, taggedNode)
-		if (!tc) {
-			return undefined
+	isValid(sourceFile: TS.SourceFile): boolean {
+		if (!this.cachedSize.has(sourceFile)) {
+			return false
 		}
 
-		// I believe there must be a better way to check document version!
+		// I believe there should be a better way to check document version!
 		let oldSize = this.cachedSize.get(sourceFile)
 		let newSize = sourceFile.getFullWidth()
 		let changed = oldSize !== newSize
 
 		if (changed) {
-			this.clearSourceFile(sourceFile)
-
-			return undefined
+			this.clearCache(sourceFile)
+			return false
 		}
 
-		return tc
+		return true
 	}
 
-	resetTimeout(sourceFile: TS.SourceFile) {
+	private resetTimeout(sourceFile: TS.SourceFile) {
 		let timeout = this.timeouts.get(sourceFile)
 		if (timeout) {
 			clearTimeout(timeout)
-			timeout = setTimeout(() => this.clearSourceFile(sourceFile), 5 * 60 * 1000)
+			timeout = setTimeout(() => this.clearCache(sourceFile), 5 * 60 * 1000)
 			this.timeouts.set(sourceFile, timeout)	
 		}
 	}
 
-	private clearSourceFile(sourceFile: TS.SourceFile) {
-		this.cache.deleteOf(sourceFile)
+	private clearCache(sourceFile: TS.SourceFile) {
 		this.cachedSize.delete(sourceFile)
 		this.timeouts.delete(sourceFile)
 	}
+}
 
-	add(sourceFile: TS.SourceFile, taggedNode: TS.TaggedTemplateExpression, context: Template) {
-		this.cache.set(sourceFile, taggedNode, context)
-		this.cachedSize.set(sourceFile, sourceFile.getFullWidth())
-		this.resetTimeout(sourceFile)
+
+/** 
+ * If source file not changed, can keep scope in cache.
+ * If source file not touched for 5 minutes, clear cache.
+ */
+class ScopeTreeCache {
+
+	readonly sourceFileCache: SourceFileCache
+	private cache: WeakMap<TS.SourceFile, ScopeTree> = new WeakMap()
+
+	constructor(sourceFileCache: SourceFileCache) {
+		this.sourceFileCache = sourceFileCache
+	}
+
+	get(sourceFile: TS.SourceFile): ScopeTree | undefined {
+		if (!this.sourceFileCache.isValid(sourceFile)) {
+			return undefined
+		}
+
+		return this.cache.get(sourceFile)
+	}
+
+	add(sourceFile: TS.SourceFile, scopeTree: ScopeTree) {
+		this.cache.set(sourceFile, scopeTree)
+		this.sourceFileCache.cache(sourceFile)
+	}
+}
+
+
+/** 
+ * If source file not changed, can keep template in cache.
+ * If source file not touched for 5 minutes, clear cache.
+ */
+class TemplateCache {
+
+	readonly sourceFileCache: SourceFileCache
+	private cache: WeakerPairKeysMap<TS.SourceFile, TS.TaggedTemplateExpression, Template> = new WeakerPairKeysMap()
+
+	constructor(sourceFileCache: SourceFileCache) {
+		this.sourceFileCache = sourceFileCache
+	}
+
+	get(sourceFile: TS.SourceFile, taggedNode: TS.TaggedTemplateExpression): Template | undefined {
+		if (!this.sourceFileCache.isValid(sourceFile)) {
+			return undefined
+		}
+
+		return this.cache.get(sourceFile, taggedNode)
+	}
+
+	add(sourceFile: TS.SourceFile, taggedNode: TS.TaggedTemplateExpression, template: Template) {
+		this.cache.set(sourceFile, taggedNode, template)
+		this.sourceFileCache.cache(sourceFile)
 	}
 }

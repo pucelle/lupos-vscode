@@ -10,7 +10,7 @@ export interface LuposItem {
 	readonly nameNode: TS.Node
 
 	/** Description is leading comment of definition. */
-	readonly description: string | null
+	readonly description: string
 
 	/** Type of item. */
 	readonly type: TS.Type
@@ -31,18 +31,18 @@ export interface LuposEvent extends LuposItem {}
 export interface LuposBinding extends LuposItem {
 
 	/** Defined class declaration. */
-	readonly declaration: TS.ClassLikeDeclaration
+	readonly declaration: TS.ClassDeclaration
 }
 
 export interface LuposComponent extends LuposItem {
 
 	/** Defined class declaration. */
-	readonly declaration: TS.ClassLikeDeclaration
+	readonly declaration: TS.ClassDeclaration
 
-	/** Component public properties, not include properties of super class. */
+	/** Component public properties, not include properties of super classes. */
 	readonly properties: Record<string, LuposProperty>
 
-	/** Component events. */
+	/** Component events, include all events even from super classes. */
 	readonly events: Record<string, LuposEvent>
 
 	/** Component slot elements. */

@@ -80,22 +80,13 @@ export class TSLanguageServiceProxy {
 	}
 
 	private wrapGetCompletionsAtPosition() {
-		if (!this.templateService.getCompletionsAtPosition && !this.templateService.getNonTemplateCompletionsAtPosition) {
+		if (!this.templateService.getCompletionsAtPosition) {
 			return
 		}
 
 		this.wrap('getCompletionsAtPosition', (callOriginal, fileName: string, gloOffset: number, options) => {
 			let template = this.templateProvider.getTemplateAt(fileName, gloOffset)
-
-			// Lupos service may provide more completion out-of template.
 			if (!template) {
-				if (this.templateService.getNonTemplateCompletionsAtPosition) {
-					let info = this.templateService.getNonTemplateCompletionsAtPosition!(fileName, gloOffset, options)
-					if (info) {
-						return info
-					}
-				}
-
 				return callOriginal()
 			}
 
@@ -124,22 +115,13 @@ export class TSLanguageServiceProxy {
 	}
 
 	private wrapGetCompletionEntryDetails() {
-		if (!this.templateService.getCompletionEntryDetails && !this.templateService.getNonTemplateCompletionEntryDetails) {
+		if (!this.templateService.getCompletionEntryDetails) {
 			return
 		}
 
 		this.wrap('getCompletionEntryDetails', (callOriginal, fileName: string, gloOffset: number, name: string, options) => {
 			let template = this.templateProvider.getTemplateAt(fileName, gloOffset)
-
-			// Lupos service may provide more completion out-of template.
 			if (!template) {
-				if (this.templateService.getNonTemplateCompletionEntryDetails) {
-					let info = this.templateService.getNonTemplateCompletionEntryDetails!(fileName, gloOffset, name, options)
-					if (info) {
-						return info
-					}
-				}
-
 				return callOriginal()
 			}
 
@@ -156,22 +138,13 @@ export class TSLanguageServiceProxy {
 	}
 
 	private wrapGetQuickInfoAtPosition() {
-		if (!this.templateService.getQuickInfoAtPosition && !this.templateService.getNonTemplateQuickInfoAtPosition) {
+		if (!this.templateService.getQuickInfoAtPosition) {
 			return
 		}
 
 		this.wrap('getQuickInfoAtPosition', (callOriginal, fileName: string, gloOffset: number) => {
 			let template = this.templateProvider.getTemplateAt(fileName, gloOffset)
-
-			// Lupos service may provide more completion out-of template.
 			if (!template) {
-				if (this.templateService.getNonTemplateQuickInfoAtPosition) {
-					let info = this.templateService.getNonTemplateQuickInfoAtPosition!(fileName, gloOffset)
-					if (info) {
-						return info
-					}
-				}
-
 				return callOriginal()
 			}
 			

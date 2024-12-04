@@ -1,10 +1,11 @@
 import * as TS from 'typescript'
-import {analyzeLuposComponents} from './components'
+import {analyzeLuposComponents, createLuposComponent} from './components'
 import {analyzeLuposIcons, LuposIcon} from './icons'
-import {ProjectContext} from '../../core'
+import {ProjectContext, ts} from '../../core'
 import {LuposBinding, LuposComponent, LuposEvent, LuposProperty} from './types'
-import {ListMap} from '../../lupos-ts-module'
-import {analyzeLuposBindings} from './bindings'
+import {KnownInternalBindings, ListMap, TemplateHelpers} from '../../lupos-ts-module'
+import {analyzeLuposBindings, createLuposBinding} from './bindings'
+import {Template} from '../../template-service'
 
 
 export class LuposAnalyzer {
@@ -132,13 +133,47 @@ export class LuposAnalyzer {
 		}
 	}
 
-	/** Get component by it's class declaration, use it for completion. */
-	getComponentByDeclaration(declaration: TS.ClassLikeDeclaration): LuposComponent | undefined {
+	/** Get components by name. */
+	getComponentsByName(name: string): LuposComponent[] | undefined {
+		return this.componentsByName.get(name)
+	}
+
+	/** Get components by template part, the  and template. */
+	getComponentsByTagName(tagName: string, template: Template): LuposComponent[] {
+		let classDecls = TemplateHelpers.resolveComponentDeclarations(
+			tagName,
+			template.node,
+			template.valueNodes,
+			template.scopeTree,
+			this.context.helper
+		)
+
+		let components: LuposComponent[] = []
+		
+		for (let decl of classDecls) {
+			let component = this.getComponentByDeclaration(decl)
+			if (component) {
+				components.push(component)
+			}
+		}
+
+		return components
+	}
+
+	/** 
+	 * Get component by it's class declaration, use it for completion.
+	 * `declaration` can also be a any level local declaration.
+	 */
+	getComponentByDeclaration(declaration: TS.ClassDeclaration): LuposComponent | undefined {
 		let sourceFile = declaration.getSourceFile()
 
 		// Ensure analyzed source file.
 		if (!this.files.has(sourceFile)) {
 			this.analyzeTSFile(sourceFile)
+		}
+
+		if (declaration.parent !== sourceFile) {
+			return createLuposComponent(declaration, this.context.helper)
 		}
 
 		let components = this.componentsByFile.get(sourceFile)
@@ -149,7 +184,22 @@ export class LuposAnalyzer {
 		return undefined
 	}
 
-	
+	/** 
+	 * Get components that name starts with label.
+	 * label` can be empty, then will return all components.
+	 */
+	getComponentsForCompletion(label: string): LuposComponent[] {
+		let components: LuposComponent[] = []
+
+		for (let component of this.components) {
+			if (!label || component.name.startsWith(label)) {
+				components.push(component)
+			}
+		}
+
+		return components
+	}
+
 	/** Walk component and it's super classes. */
 	private *walkComponents(component: LuposComponent, deep = 0): Generator<LuposComponent> {
 		yield component
@@ -176,19 +226,8 @@ export class LuposAnalyzer {
 		return undefined
 	}
 
-	/** Get event of a component. */
-	getComponentEvent(component: LuposComponent, eventName: string): LuposEvent | undefined {
-		for (let com of this.walkComponents(component)) {
-			if (com.events[eventName]) {
-				return com.events[eventName]
-			}
-		}
-
-		return undefined
-	}
-
 	/** Get all refs or slots properties outer class declaration contains given node. */
-	getSubProperties(component: LuposComponent, propertyName: 'slotElements', subPropertyName: string): LuposProperty | undefined {
+	getComponentSubProperties(component: LuposComponent, propertyName: 'slotElements', subPropertyName: string): LuposProperty | undefined {
 		for (let com of this.walkComponents(component)) {
 			if (com[propertyName][subPropertyName]) {
 				return com[propertyName][subPropertyName]
@@ -196,45 +235,6 @@ export class LuposAnalyzer {
 		}
 
 		return undefined
-	}
-
-	/** Get a icon from it's defined file name. */
-	getIcon(name: string): LuposIcon | null {
-		return this.icons.get(name) || null
-	}
-
-
-
-	/** 
-	 * Get components that name starts with label.
-	 * label` can be empty, then will return all components.
-	 */
-	getComponentsForCompletion(label: string): LuposComponent[] {
-		let components: LuposComponent[] = []
-
-		for (let component of this.components) {
-			if (!label || component.name.startsWith(label)) {
-				components.push(component)
-			}
-		}
-
-		return components
-	}
-
-	/** 
-	 * Get bindings that name starts with label.
-	 * label` can be empty, then will return all bindings.
-	 */
-	getBindingsForCompletion(label: string): LuposBinding[] {
-		let bindings: LuposBinding[] = []
-
-		for (let binding of this.bindings) {
-			if (!label || binding.name.startsWith(label)) {
-				bindings.push(binding)
-			}
-		}
-
-		return bindings
 	}
 
 	/** 
@@ -264,6 +264,36 @@ export class LuposAnalyzer {
 	}
 
 	/** 
+	 * Get all refs or slots properties outer class declaration contains given node.
+	 * `label` can be empty, then will return all properties.
+	 */
+	getSubPropertiesForCompletion(component: LuposComponent, propertyName: 'slotElements', subPropertyNameLabel: string): LuposProperty[] {
+		let properties: Map<string, LuposProperty> = new Map()
+
+		for (let com of this.walkComponents(component)) {
+			for (let property of Object.values(com[propertyName])) {
+				if (property.name.startsWith(subPropertyNameLabel) && !properties.has(property.name)) {
+					properties.set(property.name, property)
+				}
+			}
+		}
+
+		return [...properties.values()]
+	}
+
+	
+	/** Get event of a component. */
+	getComponentEvent(component: LuposComponent, eventName: string): LuposEvent | undefined {
+		for (let com of this.walkComponents(component)) {
+			if (com.events[eventName]) {
+				return com.events[eventName]
+			}
+		}
+
+		return undefined
+	}
+
+	/** 
 	 * Get events for component, and name starts with label.
 	 * `label` can be empty, then will return all events.
 	 */
@@ -285,22 +315,80 @@ export class LuposAnalyzer {
 		return [...events.values()]
 	}
 
-	/** 
-	 * Get all refs or slots properties outer class declaration contains given node.
-	 * `label` can be empty, then will return all properties.
-	 */
-	getSubPropertiesForCompletion(component: LuposComponent, propertyName: 'slotElements', subPropertyNameLabel: string): LuposProperty[] {
-		let properties: Map<string, LuposProperty> = new Map()
 
-		for (let com of this.walkComponents(component)) {
-			for (let property of Object.values(com[propertyName])) {
-				if (property.name.startsWith(subPropertyNameLabel) && !properties.has(property.name)) {
-					properties.set(property.name, property)
-				}
+	/** Get bindings by name. */
+	getBindingsByName(name: string): LuposBinding[] | undefined {
+		return this.bindingsByName.get(name)
+	}
+
+	/** Get binding by name and template. */
+	getBindingByNameAndTemplate(name: string, template: Template): LuposBinding | undefined {
+		let bindingClassDeclOrRef = template.getDeclarationOrReferenceByName(name)
+
+		// Local declared.
+		let bindingClass = bindingClassDeclOrRef && ts.isClassDeclaration(bindingClassDeclOrRef) ? bindingClassDeclOrRef : undefined
+
+		// Imported.
+		if (!bindingClass && bindingClassDeclOrRef) {
+			bindingClass = this.context.helper.symbol.resolveDeclaration(bindingClassDeclOrRef, ts.isClassDeclaration)
+		}
+
+		// internal bindings like `:class`.
+		if (!bindingClass && KnownInternalBindings[name]) {
+			bindingClass = this.getBindingsByName(name)?.[0]?.declaration
+		}
+
+		if (bindingClass) {
+			return this.getBindingByDeclaration(bindingClass)
+		}
+
+		return undefined
+	}
+
+	/** 
+	 * Get binding by it's class declaration, use it for completion.
+	 * `declaration` can also be a any level local declaration.
+	 */
+	getBindingByDeclaration(declaration: TS.ClassDeclaration): LuposBinding | undefined {
+		let sourceFile = declaration.getSourceFile()
+
+		// Ensure analyzed source file.
+		if (!this.files.has(sourceFile)) {
+			this.analyzeTSFile(sourceFile)
+		}
+
+		if (declaration.parent !== sourceFile) {
+			return createLuposBinding(declaration, this.context.helper)
+		}
+
+		let bindings = this.bindingsByFile.get(sourceFile)
+		if (bindings) {
+			return bindings?.find(c => c.declaration === declaration)
+		}
+
+		return undefined
+	}	
+
+	/** 
+	 * Get bindings that name starts with label.
+	 * label` can be empty, then will return all bindings.
+	 */
+	getBindingsForCompletion(label: string): LuposBinding[] {
+		let bindings: LuposBinding[] = []
+
+		for (let binding of this.bindings) {
+			if (!label || binding.name.startsWith(label)) {
+				bindings.push(binding)
 			}
 		}
 
-		return [...properties.values()]
+		return bindings
+	}
+
+
+	/** Get a icon from it's defined file name. */
+	getIcon(name: string): LuposIcon | null {
+		return this.icons.get(name) || null
 	}
 
 	/** Get a icon when it's defined file name matches label. */

@@ -1,10 +1,11 @@
 import * as TS from 'typescript'
 import {LuposAnalyzer} from './analyzer/analyzer'
 import {LuposCompletion} from './completion'
-import {FlitQuickInfo} from './quickinfo'
-import {FlitDefinition} from './definition'
+import {LuposQuickInfo} from './quickinfo'
+import {LuposDefinition} from './definition'
 import {ProjectContext} from '../core'
 import {Template} from '../template-service'
+import {getTemplatePartLocation} from '../lupos-ts-module'
 
 
 /** Provide lupos language service for a single. */
@@ -14,15 +15,15 @@ export class LuposService {
 
 	private analyzer: LuposAnalyzer
 	private completion: LuposCompletion
-	private quickInfo: FlitQuickInfo
-	private flitDefinition: FlitDefinition
+	private quickInfo: LuposQuickInfo
+	private flitDefinition: LuposDefinition
 
 	constructor(context: ProjectContext) {
 		this.context = context
 		this.analyzer = new LuposAnalyzer(context)
 		this.completion = new LuposCompletion(this.analyzer)
-		this.quickInfo = new FlitQuickInfo(this.analyzer)
-		this.flitDefinition = new FlitDefinition(this.analyzer)
+		this.quickInfo = new LuposQuickInfo(this.analyzer)
+		this.flitDefinition = new LuposDefinition(this.analyzer)
 	}
 
 	/** Make sure to reload changed source files. */
@@ -30,67 +31,51 @@ export class LuposService {
 		this.analyzer.update()
 	}
 
-	getCompletions(template: Template, temOffset: number): TS.CompletionInfo | null {
-
-		// `<|`
-		if (template.content[temOffset - 1] === '<'
-			&& (temOffset === template.content.length - 1 || !/\w/.test(template.content[temOffset + 1]))
-		) {
-			this.beFresh()
-			return this.completion.getEmptyNameStartTagCompletions()
+	getCompletions(template: Template, temOffset: number): TS.CompletionInfo | undefined {
+		let part = template.getPartAt(temOffset)
+		if (!part) {
+			return undefined
 		}
 
-		// `<N|`
-		let slot = template.getSlotAt(temOffset)
-		if (!slot) {
-			return null
+		let location = getTemplatePartLocation(part, temOffset)
+		if (!location) {
+			return undefined
 		}
 
 		this.beFresh()
 
-		return this.completion.getSlotCompletions(slot)
+		return this.completion.getCompletions(part, location, template)
 	}
 
-	getNonTemplateCompletions(fileName: string, offset: number): TS.CompletionInfo | null {
-		return this.completion.getNonTemplateCompletions(fileName, offset)
-	}
-
-	getQuickInfo(template: Template, offset: number): TS.QuickInfo | null {
-		let token = this.scanner.scanAt(context.document, position)
-		if (!token) {
-			return null
+	getQuickInfo(template: Template, temOffset: number): TS.QuickInfo | undefined {
+		let part = template.getPartAt(temOffset)
+		if (!part) {
+			return undefined
 		}
 
-		// <
-		if (token.type === FlitTokenType.StartTagOpen) {
-			return null
+		let location = getTemplatePartLocation(part, temOffset)
+		if (!location) {
+			return undefined
 		}
 
 		this.beFresh()
 		
-		return this.quickInfo.getQuickInfo(token, context.node)
+		return this.quickInfo.getQuickInfo(part, location, template)
 	}
 
-	getNonTemplateQuickInfo(fileName: string, offset: number): TS.QuickInfo | null {
-		return this.quickInfo.getNonTemplateQuickInfo(fileName, offset)
-	}
-
-	getDefinition(template: Template, offset: number): TS.DefinitionInfoAndBoundSpan | null {
-		let token = this.scanner.scanAt(context.document, position)
-		if (!token) {
-			return null
+	getDefinition(template: Template, temOffset: number): TS.DefinitionInfoAndBoundSpan | undefined {
+		let part = template.getPartAt(temOffset)
+		if (!part) {
+			return undefined
 		}
 
-		// `<` or `@@`
-		if (token.type === FlitTokenType.StartTagOpen
-			|| token.type === FlitTokenType.StartTag && !token.tagName.includes('-')
-			|| token.type === FlitTokenType.DomEvent
-		) {
-			return null
+		let location = getTemplatePartLocation(part, temOffset)
+		if (!location) {
+			return undefined
 		}
 
 		this.beFresh()
 		
-		return this.flitDefinition.getDefinition(token, context.node)
+		return this.flitDefinition.getDefinition(part, location, template)
 	}
 }

@@ -1,4 +1,5 @@
-export const DOMStyleProperties: CompleteDataItem[] = [
+/** From MDN */
+export const DOMStyleProperties: CompletionItem[] = [
 	{
 		name: "additive-symbols",
 		description: "@counter-style descriptor. Specifies the symbols used by the marker-construction algorithm specified by the system descriptor. Needs to be specified if the counter system is 'additive'."
@@ -1899,4 +1900,4 @@ export const DOMStyleProperties: CompleteDataItem[] = [
 		name: "viewport-fit",
 		description: "The border-block-style CSS property defines the style of the logical block borders of an element, which maps to a physical border style depending on the element's writing mode, directionality, and text orientation."
 	}
-	]
+]

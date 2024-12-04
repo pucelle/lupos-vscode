@@ -6,7 +6,7 @@ import {ts} from '../../core'
 export interface LuposIcon {
 	name: string
 	declaration: TS.ImportDeclaration
-	description: string | null
+	description: string
 }
 
 
@@ -24,7 +24,7 @@ export function analyzeLuposIcons(sourceFile: TS.SourceFile, helper: Helper): Lu
 			icons.push({
 				name: node.moduleSpecifier.getText().match(/([\w-]+)\.svg['"]/)?.[1] || '',
 				declaration: node,
-				description: helper.getNodeDescription(node),
+				description: helper.getNodeDescription(node) || '',
 			})
 		}
 	})

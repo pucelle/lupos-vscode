@@ -1,8 +1,12 @@
-type CompleteDataItem = {
+type CompletionItem = {
 	readonly name: string
 	readonly description: string
+
+	/** If want to overwrite replacement range. */
+	readonly start?: number
+	readonly end?: number
 }
 
-interface CompleteBooleanAttribute extends CompleteDataItem {
+interface CompletionBooleanAttributeItem extends CompletionItem {
 	forElements?: string[]
 }

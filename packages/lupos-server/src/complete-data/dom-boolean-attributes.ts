@@ -1,4 +1,5 @@
-export const DOMBooleanAttributes: CompleteBooleanAttribute[] = [
+/** From MDN */
+export const DOMBooleanAttributes: CompletionBooleanAttributeItem[] = [
 	{
 		name: 'allowfullscreen',
 		description: 'Allows iframe content to get fullscreen.',

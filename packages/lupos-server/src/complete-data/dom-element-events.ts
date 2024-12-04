@@ -1,5 +1,5 @@
-
-export const DOMElementEvents: CompleteDataItem[] = [
+/** From MDN */
+export const DOMElementEvents: CompletionItem[] = [
 	{
 		name: "abort",
 		description: "The loading of a resource has been aborted.",

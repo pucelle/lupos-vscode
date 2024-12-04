@@ -1,146 +1,113 @@
-import * as ts from 'typescript'
-import {FlitToken, FlitTokenType} from './toker-scanner'
-import {LuposAnalyzer} from './analyzer/analyzer'
-import {getScriptElementKindFromToken, splitPropertyAndModifiers} from './utils'
-import {findNodeAscent, getNodeIdentifier, getNodeName} from '../ts-utils/_ast-utils'
+import type * as TS from 'typescript'
+import {LuposAnalyzer, LuposItem} from './analyzer'
+import {getScriptElementKindFromToken} from './utils'
+import {Template} from '../template-service'
+import {TemplatePart, TemplatePartLocation, TemplatePartLocationType, TemplatePartType} from '../lupos-ts-module'
+import {ProjectContext} from '../core'
 
 
-/** Provide flit definition service. */
-export class FlitDefinition {
+/** Provide lupos definition service. */
+export class LuposDefinition {
 
-	constructor(
-		private readonly analyzer: LuposAnalyzer,
-		private readonly typescript: typeof ts
-	) {}
+	readonly analyzer: LuposAnalyzer
+	readonly context: ProjectContext
+
+	constructor(analyzer: LuposAnalyzer) {
+		this.analyzer = analyzer
+		this.context = analyzer.context
+	}
 	
-	getDefinition(token: FlitToken, contextNode: ts.Node): ts.DefinitionInfoAndBoundSpan | null {
-		// tag
-		if (token.type === FlitTokenType.StartTag) {
-			let component = this.analyzer.getComponentsByName(token.attrName)
-			return this.makeDefinitionInfo(component, token)
+	getDefinition(part: TemplatePart, location: TemplatePartLocation, template: Template): TS.DefinitionInfoAndBoundSpan | undefined {
+
+		// `<A`
+		if (part.type === TemplatePartType.Component) {
+			let component = this.analyzer.getComponentsByTagName(part.node.tagName!, template)?.[0]
+			return this.makeDefinitionInfo(component, part, location)
 		}
 
 		// :xxx
-		else if (token.type === FlitTokenType.Binding) {
-			let binding = this.getBindingDefinitionItems(token, contextNode)
-			return this.makeDefinitionInfo(binding, token)
+		else if (part.type === TemplatePartType.Binding) {
+			let item = this.getBindingDefinition(part, location, template)
+			return this.makeDefinitionInfo(item, part, location)
 		}
 
 		// .xxx
-		else if (token.type === FlitTokenType.Property) {
-			let property = this.analyzer.getComponentProperty(token.attrName, token.tagName)
-			return this.makeDefinitionInfo(property, token)
+		else if (part.type === TemplatePartType.Property) {
+			if (location.type === TemplatePartLocationType.Name) {
+				let component = this.analyzer.getComponentsByTagName(part.node.tagName!, template)?.[0]
+				let property = component ? this.analyzer.getComponentProperty(component, part.mainName!) : undefined
+
+				return this.makeDefinitionInfo(property, part, location)
+			}
 		}
 
-		// @@xxx
-		else if (token.type === FlitTokenType.ComEvent) {
-			let event = this.analyzer.getComponentEvent(token.attrName, token.tagName)
-			return this.makeDefinitionInfo(event, token)
+		// @xxx
+		else if (part.type === TemplatePartType.Event) {
+			if (location.type === TemplatePartLocationType.Name) {
+				let component = this.analyzer.getComponentsByTagName(part.node.tagName!, template)?.[0]
+				let event = component ? this.analyzer.getComponentEvent(component, part.mainName!) : undefined
+
+				return this.makeDefinitionInfo(event, part, location)
+			}
 		}
 
-		return null
+		return undefined
 	}
 	
-	private getBindingDefinitionItems(token: FlitToken, contextNode: ts.Node) {
-		let [bindingName] = splitPropertyAndModifiers(token.attrName)
+	private getBindingDefinition(part: TemplatePart, location: TemplatePartLocation, template: Template) {
+		let attr = part.attr!
+		let mainName = part.mainName!
 
-		// If `:ref="|"`.
-		if (token.attrValue !== null) {
-			let attrValue = token.attrValue.replace(/^['"](.*?)['"]$/, '$1')
-			token.attrPrefix = '.'
-
-			if (['ref', 'slot'].includes(token.attrName)) {
-				let componentPropertyName = token.attrName + 's' as 'refs' | 'slots'
-				let customTagName: string | null = null
-				token.attrName = componentPropertyName + '.' + attrValue
-
-				// Get ancestor class declaration.
-				if (token.attrName === 'ref') {
-					let declaration = findNodeAscent(contextNode, child => this.typescript.isClassLike(child)) as ts.ClassLikeDeclaration
-					if (!declaration) {
-						return null
-					}
-
-					customTagName = this.analyzer.getComponentByDeclaration(declaration)?.name || null
-				}
-				// Get closest component tag.
-				else {
-					customTagName = token.closestCustomTagName
-				}
-
-				if (!customTagName) {
-					return null
-				}
-
-				let item = this.analyzer.getSubProperties(componentPropertyName, attrValue, customTagName)
-				if (item) {
-					return item
-				}
-			}
-
-			// `:model="|"`.
-			else if (['model', 'refComponent'].includes(token.attrName)) {
-				token.attrName = attrValue
-
-				let declaration = findNodeAscent(contextNode, child => this.typescript.isClassLike(child)) as ts.ClassLikeDeclaration
-				if (!declaration) {
-					return null
-				}
-
-				let customTagName = this.analyzer.getComponentByDeclaration(declaration)?.name || null
-				if (!customTagName) {
-					return null
-				}
-
-				let item = this.analyzer.getComponentProperty(attrValue, customTagName)
-				if (item) {
-					return item
-				}
-			}
-		}
-
-		// In `:class` range part.
-		if (token.cursorOffset < 1 + bindingName.length) {
-			token.end = token.start + 1 + bindingName.length
-			token.attrName = bindingName
-
-			let binding = this.analyzer.getBindingsByName(token.attrName)
+		// `:name|`, complete binding name.
+		if (location.type === TemplatePartLocationType.Name) {
+			let binding = this.analyzer.getBindingByNameAndTemplate(part.mainName!, template)
 			return binding
 		}
 		
-		return null
+		// If `:slot="|"`.
+		else if (location.type === TemplatePartLocationType.Modifier) {
+			if (mainName === 'slot') {
+				let attrValue = attr.value!
+				let component = this.analyzer.getComponentsByTagName(part.node.tagName!, template)?.[0]
+				let property = component ? this.analyzer.getComponentSubProperties(component, 'slotElements', attrValue) : undefined
+
+				return property
+			}
+		}
+
+		return undefined
 	}
 
-	private makeDefinitionInfo(
-		item: {name: string | null, nameNode: ts.Node | null, declaration?: ts.Declaration} | null,
-		token: FlitToken
-	): ts.DefinitionInfoAndBoundSpan | null{
+	private makeDefinitionInfo(item: LuposItem | undefined, part: TemplatePart, location: TemplatePartLocation): TS.DefinitionInfoAndBoundSpan | undefined{
 		if (!item) {
-			return null
+			return undefined
 		}
 
-		let node = item.declaration ? getNodeIdentifier(item.declaration, this.typescript) || item.nameNode! : item.nameNode!
-		let name = item.name || getNodeName(node, this.typescript) || ''
-		let kind = getScriptElementKindFromToken(token, this.typescript)
-		let fileName = node.getSourceFile().fileName
+		let nameNode = item.nameNode
+		let name = item.name
+		let kind = getScriptElementKindFromToken(part, location)
+		let fileName = nameNode.getSourceFile().fileName
 
-		let textSpan: ts.TextSpan = {
-			start: node.getStart(),
-			length: node.getWidth(),
+		let textSpan: TS.TextSpan = {
+			start: nameNode.getStart(),
+			length: nameNode.getWidth(),
 		}
 
-		let info: ts.DefinitionInfo = {
+		let info: TS.DefinitionInfo = {
 			textSpan,
 			fileName,
 			kind,
 			name,
 			containerName: fileName,
-			containerKind: this.typescript.ScriptElementKind.scriptElement,
+			containerKind: this.context.helper.ts.ScriptElementKind.scriptElement,
 		}
 
+		// Not include modifiers.
+		let length = (part.namePrefix?.length || 0) + part.mainName!.length
+
 		let fromTextSpan = {
-			start: token.start,
-			length: token.end - token.start,
+			start: part.start,
+			length,
 		}
 
 		return {

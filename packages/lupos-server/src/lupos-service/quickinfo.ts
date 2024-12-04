@@ -1,264 +1,192 @@
-import * as ts from 'typescript'
-import {FlitToken, FlitTokenType} from './toker-scanner'
-import {LuposAnalyzer} from './analyzer/analyzer'
-import {LuposBindingModifiers} from '../complete-data/lupos-binding-modifiers'
-import {DOMStyleProperties} from '../complete-data/dom-style-properties'
-import {getScriptElementKindFromToken, getSymbolDisplayPartKindFromToken, splitPropertyAndModifiers} from './utils'
-import {DOMElementEvents} from '../complete-data/dom-element-events'
-import {LuposDomEventModifiers, LuposEventCategories} from '../complete-data/lupos-dom-event-modifiers'
-import {DOMBooleanAttributes} from '../complete-data/dom-boolean-attributes'
-import {findNodeAscent} from '../ts-utils/_ast-utils'
-import {getSimulateTokenFromNonTemplate} from './non-template'
+import type * as TS from 'typescript'
+import {LuposAnalyzer} from './analyzer'
+import {getScriptElementKindFromToken, getSymbolDisplayPartKindFromToken} from './utils'
+import {DOMBooleanAttributes, DOMElementEvents, DOMStyleProperties, isSimulatedEventName, LuposBindingModifiers, LuposDomEventModifiers, LuposEventCategories, LuposSimulatedEvents} from '../complete-data'
+import {TemplatePart, TemplatePartLocation, TemplatePartLocationType, TemplatePartType, TemplateSlotPlaceholder} from '../lupos-ts-module'
+import {Template} from '../template-service'
+import {ProjectContext} from '../core'
 
 
-/** Provide flit quickinfo service. */
-export class FlitQuickInfo {
+/** Provide lupos quickinfo service. */
+export class LuposQuickInfo {
 
-	constructor(
-		private readonly analyzer: LuposAnalyzer,
-		private readonly typescript: typeof ts
-	) {}
+	readonly analyzer: LuposAnalyzer
+	readonly context: ProjectContext
+
+	constructor(analyzer: LuposAnalyzer) {
+		this.analyzer = analyzer
+		this.context = analyzer.context
+	}
 	
-	getQuickInfo(token: FlitToken, contextNode: ts.Node): ts.QuickInfo | null {
-		// tag
-		if (token.type === FlitTokenType.StartTag) {
-			let component = this.analyzer.getComponentsByName(token.attrName)
-			return this.makeQuickInfo(component as {name: string, type: ts.Type, description: string}, token)
+	/** `offset` is the local offset relative to part start. */
+	getQuickInfo(part: TemplatePart, location: TemplatePartLocation, template: Template): TS.QuickInfo | undefined {
+
+		// `<A`
+		if (part.type === TemplatePartType.Component) {
+			let component = this.analyzer.getComponentsByTagName(part.node.tagName!, template)?.[0]
+			return this.makeQuickInfo(component, part, location)
 		}
 
 		// :xxx
-		else if (token.type === FlitTokenType.Binding) {
-			let binding = this.getBindingQuickInfoItems(token, contextNode)
-			return this.makeQuickInfo(binding, token)
+		else if (part.type === TemplatePartType.Binding) {
+			let item = this.getBindingQuickInfo(part, location, template)
+			return this.makeQuickInfo(item, part, location)
 		}
 
 		// .xxx
-		else if (token.type === FlitTokenType.Property) {
-			let property = this.analyzer.getComponentProperty(token.attrName, token.tagName)
-			return this.makeQuickInfo(property, token)
+		else if (part.type === TemplatePartType.Property) {
+			if (location.type === TemplatePartLocationType.Name) {
+				let component = this.analyzer.getComponentsByTagName(part.node.tagName!, template)?.[0]
+				let property = component ? this.analyzer.getComponentProperty(component, part.mainName!) : undefined
+
+				return this.makeQuickInfo(property, part, location)
+			}
 		}
 
 		// ?xxx
-		else if (token.type === FlitTokenType.BooleanAttribute) {
-			let property = FindBooleanAttributeForQuickInfo(token.attrName, token.tagName)
-			return this.makeQuickInfo(property, token)
+		else if (part.type === TemplatePartType.QueryAttribute) {
+			let property = findBooleanAttributeQuickInfo(part.mainName!, part.node.tagName!)
+			return this.makeQuickInfo(property, part, location)
 		}
 
 		// @xxx
-		else if (token.type === FlitTokenType.DomEvent) {
-			let domEvent = this.getEventQuickInfoItems(token)
-			return this.makeQuickInfo(domEvent, token)
+		else if (part.type === TemplatePartType.Event) {
+			let event = this.getEventQuickInfo(part, location, template)
+			return this.makeQuickInfo(event, part, location)
 		}
 
-		// @@xxx
-		else if (token.type === FlitTokenType.ComEvent) {
-			let comEvent = this.analyzer.getComponentEvent(token.attrName, token.tagName)
-			return this.makeQuickInfo(comEvent, token)
-		}
-
-		return null
+		return undefined
 	}
 	
-	private getBindingQuickInfoItems(token: FlitToken, contextNode: ts.Node) {
-		let [bindingName, modifiers] = splitPropertyAndModifiers(token.attrName)
+	private getBindingQuickInfo(part: TemplatePart, location: TemplatePartLocation, template: Template) {
+		let mainName = part.mainName!
 
-		// If `:ref="|"`.
-		if (token.attrValue !== null) {
-			let attrValue = token.attrValue.replace(/^['"](.*?)['"]$/, '$1')
-			token.attrPrefix = '.'
-
-			if (['ref', 'slot'].includes(token.attrName)) {
-				let componentPropertyName = token.attrName + 's' as 'refs' | 'slots'
-				let customTagName: string | null = null
-
-				token.attrName = componentPropertyName + '.' + attrValue
-
-				// Get ancestor class declaration.
-				if (token.attrName === 'ref') {
-					let declaration = findNodeAscent(contextNode, child => this.typescript.isClassLike(child)) as ts.ClassLikeDeclaration
-					if (!declaration) {
-						return null
-					}
-
-					customTagName = this.analyzer.getComponentByDeclaration(declaration)?.name || null
-				}
-				// Get closest component tag.
-				else {
-					customTagName = token.closestCustomTagName
-				}
-
-				if (!customTagName) {
-					return null
-				}
-
-				let item = this.analyzer.getSubProperties(componentPropertyName, attrValue, customTagName)
-				if (item) {
-					return item
-				}
-			}
-
-			// `:model="|"`.
-			else if (['model', 'refComponent'].includes(token.attrName)) {
-				token.attrName = attrValue
-
-				let declaration = findNodeAscent(contextNode, child => this.typescript.isClassLike(child)) as ts.ClassLikeDeclaration
-				if (!declaration) {
-					return null
-				}
-
-				let customTagName = this.analyzer.getComponentByDeclaration(declaration)?.name || null
-				if (!customTagName) {
-					return null
-				}
-
-				let item = this.analyzer.getComponentProperty(attrValue, customTagName)
-				if (item) {
-					return item
-				}
-			}
+		// `:name|`, quick info of binding name.
+		if (location.type === TemplatePartLocationType.Name) {
+			let binding = this.analyzer.getBindingByNameAndTemplate(mainName, template)
+			return binding
 		}
 
-		// `:show`, without modifiers.
-		if (modifiers.length === 0) {
-			return this.analyzer.getBindingsByName(token.attrName)
+		// `:ref.|`, quick info of modifiers.
+		else if (location.type === TemplatePartLocationType.Modifier) {
+			return this.getBindingModifierQuickInfo(part, location)
 		}
 
-		// In `:style` range part.
-		if (token.cursorOffset < 1 + bindingName.length) {
-			token.end = token.start + 1 + bindingName.length
-			token.attrName = bindingName
-
-			return this.analyzer.getBindingsByName(token.attrName)
-		}
-		
-		if (bindingName === 'style') {
-			
-			// in `.style-property` range.
-			if (token.cursorOffset < 1 + bindingName.length + 1 + modifiers[0].length) {
-
-				// Move start and end to `:style|.style-property|.`
-				token.start += 1 + bindingName.length
-				token.end = token.start + 1 + modifiers[0].length
-				token.attrPrefix = '.'
-				token.attrName = modifiers[0]
-
-				return findForQuickInfo(DOMStyleProperties, modifiers[0]) || null
-			}
-
-			// in `.px` range.
-			else {
-
-				// Move start to `:style.style-property|.`
-				token.start += 1 + bindingName.length + 1 + modifiers[0].length
-				token.attrPrefix = '.'
-				token.attrName = modifiers[1]
-
-				return findForQuickInfo(LuposBindingModifiers.style, modifiers[1]) || null
-			}
+		// `:slot="|"`.
+		else if (location.type === TemplatePartLocationType.AttrValue) {
+			return this.getBindingAttrValueQuickInfo(part, template)
 		}
 
-		else if (bindingName === 'model') {
-			let modifierStart = 1 + bindingName.length
-			let matchModifier = ''
-
-			for (let modifier of modifiers) {
-				let modifierEnd = modifierStart + 1 + modifier.length
-				if (modifierEnd > token.cursorOffset) {
-					matchModifier = modifier
-					break
-				}
-
-				modifierStart = modifierEnd
-			}
-
-			// Move start and end to `:model???|.number|...`
-			token.start += modifierStart
-			token.end = token.start + 1 + matchModifier.length
-			token.attrPrefix = '.'
-			token.attrName = matchModifier
-
-			return findForQuickInfo(LuposBindingModifiers.model, matchModifier) || null
-		}
-
-		return null
+		return undefined
 	}
-	
-	private getEventQuickInfoItems(token: FlitToken) {
-		let [eventName, modifiers] = splitPropertyAndModifiers(token.attrName)
-		
-		// `@click`, without modifiers.
-		if (modifiers.length === 0) {
-			return findForQuickInfo(DOMElementEvents, token.attrName)
+
+	private getBindingModifierQuickInfo(part: TemplatePart, location: TemplatePartLocation) {
+		let modifiers = part.modifiers!
+		let mainName = part.mainName!
+		let modifierIndex = location.modifierIndex!
+		let modifierValue = modifiers[modifierIndex]
+
+		// `:style`
+		if (mainName === 'style') {
+
+			// Complete style property.
+			if (modifierIndex === 0) {
+				return findQuickInfoItem(DOMStyleProperties, modifierValue)
+			}
+
+			// Complete style unit.
+			else if (modifierIndex === 1) {
+				return findQuickInfoItem(LuposBindingModifiers.style, modifierValue)
+			}
 		}
 
-		// In `@click` range part.
-		if (token.cursorOffset < 1 + eventName.length) {
-			token.end = token.start + 1 + eventName.length
-			token.attrName = eventName
-
-			return findForQuickInfo(DOMElementEvents, token.attrName)
-		}
-		
-		// In `@click.l|???`
+		// Not `:style`
 		else {
-			let modifierStart = 1 + eventName.length
-			let matchModifier = ''
-
-			for (let modifier of modifiers) {
-				let modifierEnd = modifierStart + 1 + modifier.length
-				if (modifierEnd > token.cursorOffset) {
-					matchModifier = modifier
-					break
-				}
-
-				modifierStart = modifierEnd
+			let modifierItems = LuposBindingModifiers[mainName]
+			if (modifierItems) {
+				return findQuickInfoItem(modifierItems, modifierValue)
 			}
-
-			// Move start and end to `@click???|.number|...`
-			token.start += modifierStart
-			token.end = token.start + 1 + matchModifier.length
-			token.attrPrefix = '.'
-			token.attrName = matchModifier
-
-			let item = findForQuickInfo(LuposDomEventModifiers.global, matchModifier)
-			let category = LuposEventCategories[eventName]
-
-			if (!item) {
-				item = findForQuickInfo(LuposDomEventModifiers[category], matchModifier)
-			}
-			
-			return item
 		}
+
+		return undefined
 	}
 
-	private makeQuickInfo(
-		item: {name: string, type?: ts.Type, description: string | null} | null,
-		token: FlitToken
-	): ts.QuickInfo | null{
+	// `:slot="|"`.
+	private getBindingAttrValueQuickInfo(part: TemplatePart, template: Template) {
+		let attr = part.attr!
+		let mainName = part.mainName!
+		let attrValue = attr.value!
+
+		// :slot="|name"
+		if (['slot'].includes(mainName)) {
+			let currentComponent = this.analyzer.getComponentByDeclaration(template.component)!
+			let propertyItems = this.analyzer.getSubPropertiesForCompletion(currentComponent, 'slotElements', attrValue)
+
+			return findQuickInfoItem(propertyItems, attrValue)
+		}
+
+		return undefined
+	}
+
+	private getEventQuickInfo(part: TemplatePart, location: TemplatePartLocation, template: Template) {
+		let mainName = part.mainName!
+		let tagName = part.node.tagName!
+		let isComponent = TemplateSlotPlaceholder.isComponent(tagName)
+		let isSimulatedEvent = isSimulatedEventName(mainName)
+		let components = isComponent ? [...this.analyzer.getComponentsByTagName(tagName, template)] : []
+		let componentEvents = isComponent ? components.map(com => this.analyzer.getComponentEventsForCompletion(com, mainName)).flat() : null
+
+		// `@cli|`, find quick info of event name.
+		if (location.type === TemplatePartLocationType.Name) {
+			if (isSimulatedEvent) {
+				return findQuickInfoItem(LuposSimulatedEvents, mainName)
+			}
+			else if (componentEvents && componentEvents.length > 0) {
+				return findQuickInfoItem(componentEvents, mainName)
+			}
+			else {
+				return findQuickInfoItem(DOMElementEvents, mainName)
+			}
+		}
+
+		// `@click.`, find quick info of modifiers.
+		else if (location.type === TemplatePartLocationType.Modifier) {
+
+			// `@keydown.Enter`, `@click.left`.
+			if (LuposEventCategories[mainName]) {
+				let category = LuposEventCategories[mainName]
+				return findQuickInfoItem(LuposDomEventModifiers[category], mainName)
+			}
+		}
+
+		return undefined
+	}
+
+	private makeQuickInfo(item: CompletionItem & {type ?: TS.Type} | undefined, part: TemplatePart, location: TemplatePartLocation): TS.QuickInfo | undefined{
 		if (!item || (!item.type && !item.description)) {
-			return null
+			return undefined
 		}
 
-		let kind = getScriptElementKindFromToken(token, this.typescript)
+		let kind = getScriptElementKindFromToken(part, location)
 
-		let textSpan: ts.TextSpan = {
-			start: token.start,
-			length: token.end - token.start,
+		let textSpan: TS.TextSpan = {
+			start: part.start,
+			length: part.end - part.start,
 		}
 
-		let headers: ts.SymbolDisplayPart[] = []
-		let documentation: ts.SymbolDisplayPart[] = []
-		let headerText = token.attrPrefix + token.attrName
+		let headers: TS.SymbolDisplayPart[] = []
+		let documentation: TS.SymbolDisplayPart[] = []
+		let headerText = (part.namePrefix || '') + part.mainName!
 
-		if (token.type === FlitTokenType.StartTag) {
+		if (part.type === TemplatePartType.Component) {
 			headerText = '<' + headerText + '>'
 		}
-		if (item.type) {
-			headerText += ': ' + this.analyzer.getTypeDescription(item.type)
+		else if (item.type) {
+			headerText += ': ' + this.context.helper.types.getTypeFullText(item.type)
 		}
 
 		headers.push({
-			kind: this.typescript.SymbolDisplayPartKind[getSymbolDisplayPartKindFromToken(token, this.typescript)],
+			kind: this.context.helper.ts.SymbolDisplayPartKind[getSymbolDisplayPartKindFromToken(part, location)],
 			text: headerText,
 		})
 
@@ -269,7 +197,7 @@ export class FlitQuickInfo {
 			})
 		}
 
-		let info: ts.QuickInfo = {
+		let info: TS.QuickInfo = {
 			kind,
 			kindModifiers: '',
 			textSpan,
@@ -279,29 +207,23 @@ export class FlitQuickInfo {
 
 		return info
 	}
-
-	getNonTemplateQuickInfo(fileName: string, offset: number): ts.QuickInfo | null {
-		let simulateToken = getSimulateTokenFromNonTemplate(fileName, offset, this.analyzer.program, this.typescript)
-		if (simulateToken) {
-			return this.getQuickInfo(simulateToken.token, simulateToken.node)
-		}
-
-		return null
-	}
 }
 
 
-function findForQuickInfo<T extends {name: string}>(items: T[], label: string): T | null {
-	return items.find(item => item.name === label) || null
+interface QuickInfoItem extends CompletionItem {
+	type?: TS.Type
 }
 
+function findQuickInfoItem(items: QuickInfoItem[], label: string): QuickInfoItem | undefined {
+	return items.find(item => item.name === label) || undefined
+}
 
-function FindBooleanAttributeForQuickInfo(label: string, tagName: string): CompleteBooleanAttribute | null {
+function findBooleanAttributeQuickInfo(label: string, tagName: string): QuickInfoItem | undefined {
 	return DOMBooleanAttributes.find(item => {
 		if (item.forElements && !item.forElements.includes(tagName)) {
 			return false
 		}
 
 		return item.name.startsWith(label)
-	}) || null
+	})
 }

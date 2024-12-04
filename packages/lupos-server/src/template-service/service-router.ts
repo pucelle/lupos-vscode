@@ -53,10 +53,6 @@ export class TemplateServiceRouter implements TemplateLanguageService {
 		return tsCompletions
 	}
 
-	getNonTemplateCompletionsAtPosition(fileName: string, offset: number): TS.CompletionInfo | undefined {
-		return this.luposService.getNonTemplateCompletions(fileName, offset) || undefined
-	}
-
 	getCompletionEntryDetails(template: Template, temOffset: number, name: string): TS.CompletionEntryDetails | undefined {
 		let region = template.embedded.getRegionAt(temOffset)
 
@@ -77,16 +73,6 @@ export class TemplateServiceRouter implements TemplateLanguageService {
 		let item = vsCompletions?.items.find(x => x.label === name)
 		if (item) {
 			return VS2TSTranslator.translateVSCompletionToEntryDetailsToTS(item)
-		}
-
-		return undefined
-	}
-
-	getNonTemplateCompletionEntryDetails(fileName: string, offset: number, name: string): TS.CompletionEntryDetails | undefined {
-		let completions = this.luposService.getNonTemplateCompletions(fileName, offset)
-		let entry = completions?.entries.find(x => x.name === name)
-		if (entry) {
-			return VS2TSTranslator.translateTSCompletionEntryToEntryDetails(entry)
 		}
 
 		return undefined
@@ -132,10 +118,6 @@ export class TemplateServiceRouter implements TemplateLanguageService {
 		}
 
 		return undefined
-	}
-
-	getNonTemplateQuickInfoAtPosition(fileName: string, offset: number): TS.QuickInfo | undefined {
-		return this.luposService.getNonTemplateQuickInfo(fileName, offset) || undefined
 	}
 
 	getDefinitionAndBoundSpan(template: Template, temOffset: number): TS.DefinitionInfoAndBoundSpan | undefined {

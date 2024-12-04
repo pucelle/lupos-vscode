@@ -22,7 +22,8 @@ export function analyzeLuposComponents(sourceFile: TS.SourceFile, helper: Helper
 }
 
 
-function createLuposComponent(node: TS.ClassDeclaration, helper: Helper): LuposComponent {
+/** Can use it to create custom object. */
+export function createLuposComponent(node: TS.ClassDeclaration, helper: Helper): LuposComponent {
 	let properties: Record<string, LuposProperty> = {}
 	let events: Record<string, LuposEvent> = {}
 	let refs: Record<string, LuposProperty> = {}
@@ -49,7 +50,7 @@ function createLuposComponent(node: TS.ClassDeclaration, helper: Helper): LuposC
 		nameNode: node.name!,
 		declaration: node,
 		type: helper.types.typeOf(node),
-		description: helper.getNodeDescription(node),
+		description: helper.getNodeDescription(node) || '',
 		sourceFile: node.getSourceFile(),
 		properties,
 		events,
@@ -79,7 +80,7 @@ export function analyzeLuposComponentEvents(component: TS.ClassDeclaration, help
 				name: member.name.getText(),
 				nameNode: member.name,
 				type: helper.types.typeOf(member)!,
-				description: helper.getNodeDescription(member),
+				description: helper.getNodeDescription(member) || '',
 				sourceFile: component.getSourceFile(),
 			})
 		}
@@ -119,7 +120,7 @@ function analyzeLuposComponentMemberProperty(node: TS.ClassElement, helper: Help
 				name: node.name.getText(),
 				nameNode: node,
 				type: helper.types.typeOf(node),
-				description: helper.getNodeDescription(node),
+				description: helper.getNodeDescription(node) || '',
 				sourceFile: node.getSourceFile(),
 				public: bePublic,
 			}
@@ -138,7 +139,7 @@ function analyzeLuposComponentMemberProperty(node: TS.ClassElement, helper: Help
 				name: node.name.getText(),
 				nameNode: node,
 				type,
-				description: helper.getNodeDescription(node),
+				description: helper.getNodeDescription(node) || '',
 				sourceFile: node.getSourceFile(),
 				public: bePublic,
 			}
@@ -179,7 +180,7 @@ export function analyzeLuposComponentSubProperties(component: TS.ClassLikeDeclar
 			name: typeMember.name.getText(),
 			nameNode: typeMember,
 			type: helper.types.typeOf(typeMember),
-			description: helper.getNodeDescription(typeMember),
+			description: helper.getNodeDescription(typeMember) || '',
 			sourceFile: typeMember.getSourceFile(),
 			public: true,
 		}
