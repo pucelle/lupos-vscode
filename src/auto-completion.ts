@@ -5,7 +5,7 @@ import {isTypeScriptLanguage} from './utils'
 interface AutoInsertingItem {
 
 	/** From string `=$`. */
-	from: string
+	leftChar: string
 
 	/** Cursor offset after inserting. */
 	cursorOffset: number
@@ -17,12 +17,12 @@ interface AutoInsertingItem {
 // May upgrade to `auto replacing items` to be more magic.
 const AutoInsertingItems: AutoInsertingItem[] = [
 	{
-		from: '=$',
+		leftChar: '=',
 		cursorOffset: 1,
 		insert: '{}',
 	},
 	{
-		from: '>$',
+		leftChar: '>',
 		cursorOffset: 1,
 		insert: '{}',
 	}
@@ -31,7 +31,7 @@ const AutoInsertingItems: AutoInsertingItem[] = [
 
 /** 
  * Do auto completion and inserting for template literal:
- * `=${}`
+ * `=${|}`
  */
 export function autoCompletion(event: vscode.TextDocumentChangeEvent): void {
 	if (!event.contentChanges[0]) {
@@ -54,11 +54,10 @@ async function autoInsertTemplateSlot() {
 	// Cursor is here: `=|$`.
 	let document = editor.document
 	let selection = editor.selection
-	let currentLine = document.lineAt(selection.active).text
 
-	for (let {from, insert, cursorOffset} of AutoInsertingItems) {
-		let leftChars = currentLine.slice(selection.active.character - from.length + 1, selection.active.character + 1)
-		if (leftChars === from) {
+	for (let {leftChar, insert, cursorOffset} of AutoInsertingItems) {
+		let char = getPreviousNonEmptyChar(document, selection.active)
+		if (char === leftChar) {
 			let insertPosition = selection.active.translate(0, 1)
 
 			// Insert `{}` after `=$`.
@@ -73,5 +72,29 @@ async function autoInsertTemplateSlot() {
 			break
 		}
 	}
+}
+
+
+/** Try get previous non-empty char. */
+function getPreviousNonEmptyChar(document: vscode.TextDocument, position: vscode.Position): string | undefined {
+	let offset = document.offsetAt(position)
+	
+	for (let i = offset - 1; i >= 0; i--) {
+		let p = document.positionAt(i)
+		let line = document.lineAt(p).text
+
+		// At the end of line.
+		if (p.character >= line.length) {
+			continue
+		}
+
+		let char = line[p.character]
+		
+		if (!/\s/.test(char)) {
+			return char
+		}
+	}
+
+	return undefined
 }
 

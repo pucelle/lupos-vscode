@@ -1,5 +1,5 @@
 {
-	"scopeName": "inline.lupos.style.injection",
+	"scopeName": "inline.lupos.style-value",
 	"injectionSelector": "L:source.ts meta.embedded.block.css meta.property-value.scss",
 	"patterns": [
 		{

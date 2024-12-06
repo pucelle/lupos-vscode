@@ -73,8 +73,8 @@
 				"injectTo": [
 					"source.ts"
 				],
-				"scopeName": "inline.lupos.style.injection",
-				"path": "./syntaxes/lupos-style-injection.json",
+				"scopeName": "inline.lupos.style-value",
+				"path": "./syntaxes/lupos-style-value.json",
 				"embeddedLanguages": {
 					"meta.template.expression.ts": "typescript"
 				}
