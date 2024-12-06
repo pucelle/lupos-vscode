@@ -13,8 +13,8 @@
             ],
             "outFiles": [
                 "${workspaceFolder}/out/**/*.js",
-                "${workspaceFolder}/node_modules/typescript-flit-plugin/out/**/*.js"
-            ]
+                "${workspaceFolder}/node_modules/lupos-server/out/**/*.js"
+            ],
         }
     ]
 }

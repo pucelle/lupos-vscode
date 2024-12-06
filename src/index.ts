@@ -6,8 +6,6 @@ import {autoCompletion} from './auto-completion'
 export function activate(context: vscode.ExtensionContext) {
 	context.subscriptions.push(
 		vscode.workspace.onDidChangeTextDocument(event => {
-			console.log(12345)
-
 			autoCompletion(event)
 		})
 	)
