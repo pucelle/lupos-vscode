@@ -1,16 +1,16 @@
 {
-	"name": "vscode-lupos",
-	"displayName": "VScode lupos",
-	"description": "Syntax highlighting and IntelliSense for html & CSS inside TypeScript tagged template strings in lupos framework",
+	"name": "lupos.vscode",
+	"displayName": "VScode Lupos",
+	"description": "Syntax highlighting and IntelliSense for HTML & CSS Tagged Template of Lupos Framework",
 	"icon": "images/logo.png",
 	"version": "1.0.0",
 	"publisher": "pucelle",
 	"license": "MIT",
 	"repository": {
-		"url": "https://github.com/pucelle/vscode-lupos.git"
+		"url": "https://github.com/pucelle/lupos.vscode.git"
 	},
 	"bugs": {
-		"url": "https://github.com/pucelle/vscode-lupos/issues"
+		"url": "https://github.com/pucelle/lupos.vscode/issues"
 	},
 	"categories": [
 		"Programming Languages"
@@ -30,61 +30,19 @@
 		"grammars": [
 			{
 				"injectTo": [
-					"source.js",
-					"source.js.jsx",
-					"source.jsx",
-					"source.ts",
-					"source.tsx",
-					"text.html.basic"
+					"source.ts"
 				],
-				"scopeName": "inline.lupos-html",
+				"scopeName": "inline.lupos.html",
 				"path": "./syntaxes/lupos-html.json",
 				"embeddedLanguages": {
-					"meta.embedded.block.html": "html",
-					"meta.embedded.block.css": "css",
-					"source.css": "css"
+					"meta.embedded.block.html": "html"
 				}
 			},
 			{
 				"injectTo": [
-					"source.js",
-					"source.js.jsx",
-					"source.jsx",
-					"source.ts",
-					"source.tsx",
-					"text.html.basic"
+					"source.ts"
 				],
-				"scopeName": "inline.lupos.string.injection",
-				"path": "./syntaxes/lupos-string-injection.json",
-				"embeddedLanguages": {
-					"meta.template.expression.ts": "typescript"
-				}
-			},
-			{
-				"injectTo": [
-					"source.js",
-					"source.js.jsx",
-					"source.jsx",
-					"source.ts",
-					"source.tsx",
-					"text.html.basic"
-				],
-				"scopeName": "inline.lupos.style.injection",
-				"path": "./syntaxes/lupos-style-injection.json",
-				"embeddedLanguages": {
-					"meta.template.expression.ts": "typescript"
-				}
-			},
-			{
-				"injectTo": [
-					"source.js",
-					"source.js.jsx",
-					"source.jsx",
-					"source.ts",
-					"source.tsx",
-					"text.html.basic"
-				],
-				"scopeName": "inline.lupos-svg",
+				"scopeName": "inline.lupos.svg",
 				"path": "./syntaxes/lupos-svg.json",
 				"embeddedLanguages": {
 					"meta.embedded.block.svg": "xml"
@@ -92,18 +50,33 @@
 			},
 			{
 				"injectTo": [
-					"source.js",
-					"source.js.jsx",
-					"source.jsx",
-					"source.ts",
-					"source.tsx",
-					"text.html.basic"
+					"source.ts"
 				],
-				"scopeName": "inline.lupos-css",
+				"scopeName": "inline.lupos.css",
 				"path": "./syntaxes/lupos-css.json",
 				"embeddedLanguages": {
 					"meta.embedded.block.css": "scss",
 					"source.css.scss": "scss"
+				}
+			},
+			{
+				"injectTo": [
+					"source.ts"
+				],
+				"scopeName": "inline.lupos.attribute",
+				"path": "./syntaxes/lupos-attribute.json",
+				"embeddedLanguages": {
+					"meta.template.expression.ts": "typescript"
+				}
+			},
+			{
+				"injectTo": [
+					"source.ts"
+				],
+				"scopeName": "inline.lupos.style.injection",
+				"path": "./syntaxes/lupos-style-injection.json",
+				"embeddedLanguages": {
+					"meta.template.expression.ts": "typescript"
 				}
 			}
 		],
@@ -116,8 +89,8 @@
 	},
 	"scripts": {
 		"vscode:prepublish": "npm run build",
-		"build": "npm run build && cd packages/lupos-server && npm run build",
-		"watch": "tsc -b -w",
+		"build": "tsc -b && cd packages/lupos-server && tsc -b",
+		"watch-client": "tsc -b -w",
 		"watch-server": "cd packages/lupos-server && npm run watch",
 		"copy-to-vsce": "node copy-to-vsce.js",
 		"vsce-package": "cd vsce && vsce package"

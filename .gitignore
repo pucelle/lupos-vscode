@@ -6,4 +6,5 @@ node_modules
 .vscode-test
 ./out
 .VsCodeCounter
+*.tsbuildinfo
 vsce

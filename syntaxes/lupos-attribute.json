@@ -1,0 +1,69 @@
+{
+	"scopeName": "inline.lupos.attribute",
+	"injectionSelector": "L:source.ts meta.embedded.block.html meta.tag",
+	"patterns": [
+		{
+			"include": "source.ts#template-substitution-element"
+		},
+		{
+			"name": "meta.attribute.lupos.binding.$0",
+			"begin": "(?<=\\s)(\\??:)(\\w+)([\\w.:$-]*)",
+			"beginCaptures": {
+				"1": {
+					"name": "entity.other.attribute-name.html"
+				},
+				"2": {
+					"name": "entity.name.type.class"
+				},
+				"3": {
+					"name": "string"
+				}
+			},
+			"end": "(?=\\s*+[^=\\s])",
+			"patterns": [
+				{
+					"include": "text.html.basic#attribute-interior"
+				}
+			]
+		},
+		{
+			"name": "meta.attribute.lupos.event.$0",
+			"begin": "(?<=\\s)(@)(\\w+)([\\w.:$-]*)",
+			"beginCaptures": {
+				"1": {
+					"name": "entity.other.attribute-name.html"
+				},
+				"2": {
+					"name": "entity.other.attribute-name.html"
+				},
+				"3": {
+					"name": "string"
+				}
+			},
+			"end": "(?=\\s*+[^=\\s])",
+			"patterns": [
+				{
+					"include": "text.html.basic#attribute-interior"
+				}
+			]
+		},
+		{
+			"name": "meta.attribute.lupos.property.$0",
+			"begin": "(?<=\\s)(\\.)(\\w+)",
+			"beginCaptures": {
+				"1": {
+					"name": "entity.other.attribute-name.html"
+				},
+				"2": {
+					"name": "variable.other.object.property.ts"
+				}
+			},
+			"end": "(?=\\s*+[^=\\s])",
+			"patterns": [
+				{
+					"include": "text.html.basic#attribute-interior"
+				}
+			]
+		}
+	]
+}
