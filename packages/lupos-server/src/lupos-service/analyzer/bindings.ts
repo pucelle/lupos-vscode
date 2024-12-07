@@ -1,6 +1,6 @@
 import type * as TS from 'typescript'
 import {LuposBinding} from './types'
-import {Helper, KnownInternalBindings} from '../../lupos-ts-module'
+import {Helper, KnownInternalBindingClassNames, KnownInternalBindings} from '../../lupos-ts-module'
 import {ts} from '../../core'
 
 
@@ -12,7 +12,10 @@ export function analyzeLuposBindings(sourceFile: TS.SourceFile, helper: Helper):
 	ts.forEachChild(sourceFile, (node: TS.Node) => {
 		if (ts.isClassDeclaration(node)
 			&& node.name
-			&& helper.class.isDerivedOf(node, 'Binding', '@pucelle/lupos.js')
+			&& (
+				helper.class.isDerivedOf(node, 'Binding', '@pucelle/lupos.js')
+				|| KnownInternalBindingClassNames.includes(node.name.text)
+			)
 		) {
 			bindings.push(createLuposBinding(node, helper))
 		}

@@ -31,7 +31,6 @@ export class TemplateProvider {
 		}
 
 		let template = this.templateCache.get(sourceFile, taggedNode)
-
 		if (!template) {
 			template = this.createTemplate(taggedNode)
 			this.templateCache.add(sourceFile, taggedNode, template)

@@ -1,19 +1,18 @@
 // A launch configuration that launches the extension inside a new window
 {
-    "version": "0.1.0",
+    "version": "0.2.0",
     "configurations": [
         {
-            "name": "Launch Extension",
+            "name": "Launch Plugin",
             "type": "extensionHost",
             "request": "launch",
             "runtimeExecutable": "${execPath}",
             "args": [
-                //"--disable-extensions", 
+                "--disable-extensions", 
                 "--extensionDevelopmentPath=${workspaceRoot}"
             ],
             "outFiles": [
                 "${workspaceFolder}/out/**/*.js",
-                "${workspaceFolder}/node_modules/lupos-server/out/**/*.js"
             ],
         }
     ]

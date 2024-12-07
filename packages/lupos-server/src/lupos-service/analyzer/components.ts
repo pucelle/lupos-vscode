@@ -26,7 +26,6 @@ export function analyzeLuposComponents(sourceFile: TS.SourceFile, helper: Helper
 export function createLuposComponent(node: TS.ClassDeclaration, helper: Helper): LuposComponent {
 	let properties: Record<string, LuposProperty> = {}
 	let events: Record<string, LuposEvent> = {}
-	let refs: Record<string, LuposProperty> = {}
 	let slotElements: Record<string, LuposProperty> = {}
 
 	for (let event of analyzeLuposComponentEvents(node, helper)) {
@@ -37,16 +36,12 @@ export function createLuposComponent(node: TS.ClassDeclaration, helper: Helper):
 		properties[property.name] = property
 	}
 
-	for (let ref of analyzeLuposComponentSubProperties(node, 'refs', helper) || []) {
-		refs[ref.name] = ref
-	}
-
 	for (let slot of analyzeLuposComponentSubProperties(node, 'slotElements', helper) || []) {
 		slotElements[slot.name] = slot
 	}
-	
+
 	return {
-		name: node.name!.text,
+		name: helper.getText(node.name!),
 		nameNode: node.name!,
 		declaration: node,
 		type: helper.types.typeOf(node),
@@ -60,11 +55,11 @@ export function createLuposComponent(node: TS.ClassDeclaration, helper: Helper):
 
 
 /** Analyze event interfaces from `extends Component<XXXEvents>`. */
-export function analyzeLuposComponentEvents(component: TS.ClassDeclaration, helper: Helper): LuposEvent[] {
+export function analyzeLuposComponentEvents(node: TS.ClassDeclaration, helper: Helper): LuposEvent[] {
 	let events: LuposEvent[] = []
 
 	// Resolve all the event interface items.
-	let interfaceDecls = helper.symbol.resolveExtendedInterfaceLikeTypeParameters(component, 'EventFirer', 0)
+	let interfaceDecls = helper.symbol.resolveExtendedInterfaceLikeTypeParameters(node, 'EventFirer', 0)
 
 	for (let decl of interfaceDecls) {
 		for (let member of decl.members) {
@@ -77,11 +72,11 @@ export function analyzeLuposComponentEvents(component: TS.ClassDeclaration, help
 			}
 
 			events.push({
-				name: member.name.getText(),
+				name: helper.getText(member.name),
 				nameNode: member.name,
 				type: helper.types.typeOf(member)!,
 				description: helper.getNodeDescription(member) || '',
-				sourceFile: component.getSourceFile(),
+				sourceFile: node.getSourceFile(),
 			})
 		}
 	}
@@ -117,7 +112,7 @@ function analyzeLuposComponentMemberProperty(node: TS.ClassElement, helper: Help
 
 		if (!beReadOnly && !beStatic) {
 			return {
-				name: node.name.getText(),
+				name: helper.getText(node.name),
 				nameNode: node,
 				type: helper.types.typeOf(node),
 				description: helper.getNodeDescription(node) || '',
@@ -136,7 +131,7 @@ function analyzeLuposComponentMemberProperty(node: TS.ClassElement, helper: Help
 
 		if (!beStatic) {
 			return{
-				name: node.name.getText(),
+				name: helper.getText(node.name),
 				nameNode: node,
 				type,
 				description: helper.getNodeDescription(node) || '',
@@ -177,7 +172,7 @@ export function analyzeLuposComponentSubProperties(component: TS.ClassLikeDeclar
 		}
 		
 		let property: LuposProperty = {
-			name: typeMember.name.getText(),
+			name: helper.getText(typeMember.name),
 			nameNode: typeMember,
 			type: helper.types.typeOf(typeMember),
 			description: helper.getNodeDescription(typeMember) || '',

@@ -57,6 +57,17 @@ export class LuposCompletion {
 			return this.makeCompletionInfo(items, part, location)
 		}
 
+		// `tagName="xxx"`
+		else if (part.type === TemplatePartType.UnSlottedAttribute
+			&& TemplateSlotPlaceholder.isComponent(part.node.tagName!)
+			&& location.type === TemplatePartLocationType.Name
+		) {
+			// let info = Lupos.find(item => item.name === part.rawName)
+			// if (info) {
+			// 	return this.makeQuickInfo(info, part, location)
+			// }
+		}
+
 		return undefined
 	}
 

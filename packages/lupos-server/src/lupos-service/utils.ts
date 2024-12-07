@@ -15,6 +15,9 @@ export function getScriptElementKindFromToken(part: TemplatePart | undefined, lo
 		case TemplatePartType.FlowControl:
 			return ts.ScriptElementKind.classElement
 
+		case TemplatePartType.NormalStartTag:
+			return ts.ScriptElementKind.string
+		
 		case TemplatePartType.Binding:
 			if (location.type === TemplatePartLocationType.Name) {
 				return ts.ScriptElementKind.classElement
@@ -49,9 +52,6 @@ export function getScriptElementKindFromToken(part: TemplatePart | undefined, lo
 				return ts.ScriptElementKind.string
 			}
 
-		case TemplatePartType.NormalStartTag:
-			return ts.ScriptElementKind.string
-	
 		default:
 			return ts.ScriptElementKind.unknown
 	}
@@ -66,6 +66,9 @@ export function getSymbolDisplayPartKindFromToken(part: TemplatePart, location: 
 		case TemplatePartType.FlowControl:
 			return ts.SymbolDisplayPartKind.className
 
+		case TemplatePartType.NormalStartTag:
+			return ts.SymbolDisplayPartKind.text
+	
 		case TemplatePartType.Binding:
 			if (location.type === TemplatePartLocationType.Name) {
 				return ts.SymbolDisplayPartKind.className
@@ -100,9 +103,6 @@ export function getSymbolDisplayPartKindFromToken(part: TemplatePart, location: 
 				return ts.SymbolDisplayPartKind.text
 			}
 
-		case TemplatePartType.NormalStartTag:
-			return ts.SymbolDisplayPartKind.text
-	
 		default:
 			return ts.SymbolDisplayPartKind.text
 	}

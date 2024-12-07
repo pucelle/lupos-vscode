@@ -46,7 +46,6 @@ export class LuposDefinition {
 			if (location.type === TemplatePartLocationType.Name) {
 				let component = this.analyzer.getComponentsByTagName(part.node.tagName!, template)?.[0]
 				let event = component ? this.analyzer.getComponentEvent(component, part.mainName!) : undefined
-
 				return this.makeDefinitionInfo(event, part, location)
 			}
 		}
@@ -60,7 +59,7 @@ export class LuposDefinition {
 
 		// `:name|`, complete binding name.
 		if (location.type === TemplatePartLocationType.Name) {
-			let binding = this.analyzer.getBindingByNameAndTemplate(part.mainName!, template)
+			let binding = this.analyzer.getBindingByNameAndTemplate(mainName, template)
 			return binding
 		}
 		
@@ -103,10 +102,10 @@ export class LuposDefinition {
 		}
 
 		// Not include modifiers.
-		let length = (part.namePrefix?.length || 0) + part.mainName!.length
+		let length = location.end - location.start
 
 		let fromTextSpan = {
-			start: part.start,
+			start: location.start,
 			length,
 		}
 

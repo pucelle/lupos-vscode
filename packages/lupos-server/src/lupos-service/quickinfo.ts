@@ -1,10 +1,15 @@
 import type * as TS from 'typescript'
 import {LuposAnalyzer} from './analyzer'
 import {getScriptElementKindFromToken, getSymbolDisplayPartKindFromToken} from './utils'
-import {DOMBooleanAttributes, DOMElementEvents, DOMStyleProperties, isSimulatedEventName, LuposBindingModifiers, LuposDomEventModifiers, LuposEventCategories, LuposSimulatedEvents} from '../complete-data'
+import {DOMBooleanAttributes, DOMElementEvents, DOMStyleProperties, isSimulatedEventName, LuposBindingModifiers, LuposComponentAttributes, LuposDomEventModifiers, LuposEventCategories, LuposSimulatedEvents} from '../complete-data'
 import {TemplatePart, TemplatePartLocation, TemplatePartLocationType, TemplatePartType, TemplateSlotPlaceholder} from '../lupos-ts-module'
 import {Template} from '../template-service'
-import {ProjectContext} from '../core'
+import {Logger, ProjectContext} from '../core'
+
+
+interface QuickInfoItem extends CompletionItem {
+	type?: TS.Type
+}
 
 
 /** Provide lupos quickinfo service. */
@@ -20,6 +25,10 @@ export class LuposQuickInfo {
 	
 	/** `offset` is the local offset relative to part start. */
 	getQuickInfo(part: TemplatePart, location: TemplatePartLocation, template: Template): TS.QuickInfo | undefined {
+		let p = {...part} as any
+		p.node = null
+		Logger.log(p)
+		Logger.log(location)
 
 		// `<A`
 		if (part.type === TemplatePartType.Component) {
@@ -53,6 +62,19 @@ export class LuposQuickInfo {
 		else if (part.type === TemplatePartType.Event) {
 			let event = this.getEventQuickInfo(part, location, template)
 			return this.makeQuickInfo(event, part, location)
+		}
+
+		// `tagName="xxx"`
+		else if (part.type === TemplatePartType.UnSlottedAttribute
+			&& TemplateSlotPlaceholder.isComponent(part.node.tagName!)
+			&& location.type === TemplatePartLocationType.Name
+		) {
+			Logger.log(part.rawName)
+			let info = LuposComponentAttributes.find(item => item.name === part.rawName)
+			Logger.log(info)
+			if (info) {
+				return this.makeQuickInfo(info, part, location)
+			}
 		}
 
 		return undefined
@@ -176,7 +198,10 @@ export class LuposQuickInfo {
 
 		let headers: TS.SymbolDisplayPart[] = []
 		let documentation: TS.SymbolDisplayPart[] = []
-		let headerText = (part.namePrefix || '') + part.mainName!
+
+		let headerText = location.type === TemplatePartLocationType.TagName
+			? part.node.tagName!
+			: (part.namePrefix || '') + part.mainName!
 
 		if (part.type === TemplatePartType.Component) {
 			headerText = '<' + headerText + '>'
@@ -209,10 +234,6 @@ export class LuposQuickInfo {
 	}
 }
 
-
-interface QuickInfoItem extends CompletionItem {
-	type?: TS.Type
-}
 
 function findQuickInfoItem(items: QuickInfoItem[], label: string): QuickInfoItem | undefined {
 	return items.find(item => item.name === label) || undefined

@@ -45,8 +45,8 @@ export class TemplateEmbeddedRegions {
 
 					this.regions.push(this.createRegion(
 						'css',
-						node.start,
-						node.end,
+						start,
+						end,
 						true
 					))
 				}
@@ -57,7 +57,7 @@ export class TemplateEmbeddedRegions {
 			this.template.tagName === 'css' ? 'css' : 'html',
 			0,
 			this.template.content.length,
-			true
+			false
 		))
 	}
 
@@ -70,6 +70,12 @@ export class TemplateEmbeddedRegions {
 		if (innerStyle) {
 			content = `_{${content}}`
 			offset = -2
+		}
+
+		if (languageId === 'css') {
+
+			// Get semantic diagnostics for second `$`.
+			content = content.replace(/(\$LUPOS_SLOT_INDEX_\d+)\$/g, '$1_')
 		}
 
 		return new TemplateEmbeddedRegion(content, languageId, start, end, offset)

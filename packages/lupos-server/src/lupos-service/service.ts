@@ -1,4 +1,4 @@
-import * as TS from 'typescript'
+import type * as TS from 'typescript'
 import {LuposAnalyzer} from './analyzer/analyzer'
 import {LuposCompletion} from './completion'
 import {LuposQuickInfo} from './quickinfo'
@@ -16,14 +16,14 @@ export class LuposService {
 	private analyzer: LuposAnalyzer
 	private completion: LuposCompletion
 	private quickInfo: LuposQuickInfo
-	private flitDefinition: LuposDefinition
+	private definition: LuposDefinition
 
 	constructor(context: ProjectContext) {
 		this.context = context
 		this.analyzer = new LuposAnalyzer(context)
 		this.completion = new LuposCompletion(this.analyzer)
 		this.quickInfo = new LuposQuickInfo(this.analyzer)
-		this.flitDefinition = new LuposDefinition(this.analyzer)
+		this.definition = new LuposDefinition(this.analyzer)
 	}
 
 	/** Make sure to reload changed source files. */
@@ -76,6 +76,6 @@ export class LuposService {
 
 		this.beFresh()
 		
-		return this.flitDefinition.getDefinition(part, location, template)
+		return this.definition.getDefinition(part, location, template)
 	}
 }

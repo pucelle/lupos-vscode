@@ -1,6 +1,5 @@
-import * as TS from 'typescript'
+import type * as TS from 'typescript'
 import {Helper} from '../lupos-ts-module'
-import {Logger} from './logger'
 import {ProjectHelper} from './project-helper'
 
 
@@ -12,5 +11,4 @@ export interface ProjectContext {
 	typeChecker: TS.TypeChecker
 	helper: Helper
 	projectHelper: ProjectHelper
-	logger: Logger
 }

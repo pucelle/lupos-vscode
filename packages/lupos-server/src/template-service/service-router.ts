@@ -1,13 +1,12 @@
-import * as TS from 'typescript'
+import type * as TS from 'typescript'
 import * as vscode from 'vscode-languageserver-types'
 import {VS2TSTranslator} from './vs-ts-translator'
 import {LuposService} from '../lupos-service'
-import {ProjectContext} from '../core'
+import {Logger, ProjectContext} from '../core'
 import {TemplateLanguageService} from './types'
 import {Template} from './template'
 import {TemplateEmbeddedRegion} from './embedded-region'
 import {SharedCSSService, SharedHTMLService} from '../shared-services'
-
 
 
 /**
@@ -26,7 +25,7 @@ export class TemplateServiceRouter implements TemplateLanguageService {
 		this.tsService = context.service
 		this.luposService = new LuposService(context)
 
-		this.context.logger.log('Lupos Plugin Started')
+		Logger.log('Lupos Plugin Started')
 	}
 
 	getCompletionsAtPosition(template: Template, temOffset: number): TS.CompletionInfo | undefined {

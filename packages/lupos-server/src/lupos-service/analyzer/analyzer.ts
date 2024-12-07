@@ -1,7 +1,7 @@
-import * as TS from 'typescript'
+import type * as TS from 'typescript'
 import {analyzeLuposComponents, createLuposComponent} from './components'
 import {analyzeLuposIcons, LuposIcon} from './icons'
-import {ProjectContext, ts} from '../../core'
+import {Logger, ProjectContext, ts} from '../../core'
 import {LuposBinding, LuposComponent, LuposEvent, LuposProperty} from './types'
 import {KnownInternalBindings, ListMap, TemplateHelpers} from '../../lupos-ts-module'
 import {analyzeLuposBindings, createLuposBinding} from './bindings'
@@ -46,6 +46,10 @@ export class LuposAnalyzer {
 
 		for (let file of changedFiles) {
 			this.analyzeTSFile(file)
+		}
+
+		if (changedFiles.size > 0) {
+			Logger.log(`Analyzed ${changedFiles.size} files`)
 		}
 	}
 
@@ -97,7 +101,7 @@ export class LuposAnalyzer {
 		}
 
 		// Binding expired.
-		for (let binding of this.bindings) {
+		for (let binding of [...this.bindings]) {
 			if (!files.has(binding.sourceFile)) {
 				continue
 			}
@@ -123,6 +127,7 @@ export class LuposAnalyzer {
 		}
 	
 		for (let binding of bindings) {
+			console.log('FIND: ' + binding.name)
 			this.bindings.add(binding)
 			this.bindingsByName.add(binding.name, binding)
 			this.bindingsByFile.add(binding.sourceFile, binding)
@@ -210,7 +215,6 @@ export class LuposAnalyzer {
 				continue
 			}
 
-			yield superComponent
 			yield *this.walkComponents(superComponent, deep + 1)
 		}
 	}
@@ -335,7 +339,8 @@ export class LuposAnalyzer {
 
 		// internal bindings like `:class`.
 		if (!bindingClass && KnownInternalBindings[name]) {
-			bindingClass = this.getBindingsByName(name)?.[0]?.declaration
+			let declName = KnownInternalBindings[name].name
+			bindingClass = this.getBindingsByName(declName)?.[0]?.declaration
 		}
 
 		if (bindingClass) {

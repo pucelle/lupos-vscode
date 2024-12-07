@@ -4,6 +4,10 @@ import {helperOfContext} from './lupos-ts-module'
 import {TSLanguageServiceProxy} from './shared-services/decorator'
 
 
+// How to debug typescript plugin:
+// https://github.com/microsoft/TypeScript/wiki/Debugging-Language-Service-in-VS-Code
+
+
 /** Entry of the ts plugin. */
 export class LuposPlugin implements TS.server.PluginModule {
 
@@ -22,21 +26,28 @@ export class LuposPlugin implements TS.server.PluginModule {
 		// Initialize context and logger.
 		setGlobalContext(this.ts)
 
-		let program = info.languageService.getProgram()!
 		let project = info.project
-		let typeChecker = program.getTypeChecker()
-		let helper = helperOfContext(this.ts, typeChecker)
-		let projectHelper = new ProjectHelper(program, project, helper) 
+		let programGetter = () => info.languageService.getProgram()!
+		let typeCheckerGetter = () => programGetter().getTypeChecker()
+		let helper = helperOfContext(this.ts, typeCheckerGetter)
+		let projectHelper = new ProjectHelper(project, helper) 
 
 		let context: ProjectContext = {
 			service: info.languageService,
 			project,
-			program,
-			typeChecker,
+
+			// Must get it dynamically.
+			get program() {
+				return programGetter()
+			},
+			get typeChecker() {
+				return typeCheckerGetter()
+			},
 			helper,
 			projectHelper,
-			logger: new Logger(info.project.projectService.logger),
 		}
+
+		Logger.initialize(info.project.projectService.logger)
 
 		if (this.decoratedServices.has(info.languageService)) {
 			return this.decoratedServices.get(info.languageService)!

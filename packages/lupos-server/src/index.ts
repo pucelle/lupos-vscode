@@ -1,7 +1,7 @@
-import * as ts from 'typescript'
+import type * as TS from 'typescript'
 import {LuposPlugin} from './plugin'
 
 
-export default ((mod: {typescript: typeof ts}) => {
+export = ((mod: {typescript: typeof TS}) => {
 	return new LuposPlugin(mod.typescript)
-}) as ts.server.PluginModuleFactory
+}) as TS.server.PluginModuleFactory

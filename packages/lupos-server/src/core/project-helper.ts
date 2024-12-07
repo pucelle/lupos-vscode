@@ -6,19 +6,17 @@ import {Helper} from '../lupos-ts-module'
 /** Help to get some info within a project */
 export class ProjectHelper {
 
-	readonly program: TS.Program
 	readonly project: TS.server.Project
 	readonly helper: Helper
 
-	constructor(program: TS.Program, project: TS.server.Project, helper: Helper) {
-		this.program = program
+	constructor(project: TS.server.Project, helper: Helper) {
 		this.project = project
 		this.helper = helper
 	}
 
 	/** Get source file by file name. */
 	getSourceFile(fileName: string): TS.SourceFile | undefined {
-		return this.program.getSourceFile(fileName)
+		return this.project.getLanguageService().getProgram()!.getSourceFile(fileName)
 	}
 
 	/** Get node at the specified offset of source file. */

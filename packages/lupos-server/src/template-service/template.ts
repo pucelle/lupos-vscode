@@ -43,8 +43,8 @@ export class Template implements OriginTranslator {
 		this.component = context.helper.findOutward(node, ts.isClassDeclaration)!
 		this.sourceFile = node.getSourceFile()
 		this.fileName = node.getSourceFile().fileName
-		this.globalStart = this.node.getStart() + 1
-		this.globalEnd = this.node.getEnd() - 1
+		this.globalStart = node.getStart() + 1
+		this.globalEnd = node.getEnd() - 1
 
 		let {string, mapper} = TemplateSlotPlaceholder.toTemplateString(node)
 		let valueNodes = TemplateSlotPlaceholder.extractTemplateValues(node)
@@ -58,6 +58,16 @@ export class Template implements OriginTranslator {
 
 		let partsParser = new TemplatePartParser(root, valueNodes, false, this.onPart.bind(this), this.context.helper)
 		partsParser.parse()
+
+		// Print parts:
+		// Logger.log(this.content)
+
+		// for (let part of this.parts) {
+		// 	let p = {...part} as any
+		// 	p.node = null
+
+		// 	Logger.log(p)
+		// }
 	}
 
 	/** Add part to part list. */
@@ -105,7 +115,7 @@ export class Template implements OriginTranslator {
 
 			// `|a` not match
 			// `a|` match
-			if (part.start < temOffset && part.end >= temOffset) {
+			if (part.start <= temOffset && part.end >= temOffset) {
 				return part
 			}
 		}
