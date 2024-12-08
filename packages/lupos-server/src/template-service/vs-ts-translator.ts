@@ -186,26 +186,36 @@ export namespace VS2TSTranslator {
 		}]
 	}
 
+
+	/** An completion icon show at: https://github.com/microsoft/vscode/issues/109154 */
 	function translateVSCompletionItemKindToTS(kind: vscode.CompletionItemKind): TS.ScriptElementKind {
 		switch (kind) {
-			case vscode.CompletionItemKind.Method:
-				return ts.ScriptElementKind.memberFunctionElement
-
-			case vscode.CompletionItemKind.Function:
-				return ts.ScriptElementKind.functionElement
+			case vscode.CompletionItemKind.Class:
+				return ts.ScriptElementKind.classElement
 
 			case vscode.CompletionItemKind.Constructor:
 				return ts.ScriptElementKind.constructorImplementationElement
 
-			case vscode.CompletionItemKind.Field:
-			case vscode.CompletionItemKind.Variable:
-				return ts.ScriptElementKind.variableElement
+			case vscode.CompletionItemKind.Enum:
+				return ts.ScriptElementKind.enumElement
 
-			case vscode.CompletionItemKind.Class:
-				return ts.ScriptElementKind.classElement
+			case vscode.CompletionItemKind.EnumMember:
+				return ts.ScriptElementKind.enumMemberElement
+
+			case vscode.CompletionItemKind.Folder:
+				return ts.ScriptElementKind.directory
+				
+			case vscode.CompletionItemKind.Function:
+				return ts.ScriptElementKind.functionElement
 
 			case vscode.CompletionItemKind.Interface:
 				return ts.ScriptElementKind.interfaceElement
+	
+			case vscode.CompletionItemKind.Keyword:
+				return ts.ScriptElementKind.keyword
+
+			case vscode.CompletionItemKind.Method:
+				return ts.ScriptElementKind.functionElement
 
 			case vscode.CompletionItemKind.Module:
 				return ts.ScriptElementKind.moduleElement
@@ -213,27 +223,40 @@ export namespace VS2TSTranslator {
 			case vscode.CompletionItemKind.Property:
 				return ts.ScriptElementKind.memberVariableElement
 
-			case vscode.CompletionItemKind.Unit:
-			case vscode.CompletionItemKind.Value:
-				return ts.ScriptElementKind.constElement
-
-			case vscode.CompletionItemKind.Enum:
-				return ts.ScriptElementKind.enumElement
-
-			case vscode.CompletionItemKind.Keyword:
-				return ts.ScriptElementKind.keyword
-
-			case vscode.CompletionItemKind.Color:
-				return ts.ScriptElementKind.constElement
-
 			case vscode.CompletionItemKind.Reference:
 				return ts.ScriptElementKind.alias
 
-			case vscode.CompletionItemKind.File:
-				return ts.ScriptElementKind.moduleElement
-
-			case vscode.CompletionItemKind.Snippet:
 			case vscode.CompletionItemKind.Text:
+				return ts.ScriptElementKind.string
+
+			case vscode.CompletionItemKind.TypeParameter:
+				return ts.ScriptElementKind.typeParameterElement
+
+			case vscode.CompletionItemKind.Variable:
+				return ts.ScriptElementKind.variableElement
+
+
+			// Have similar icon.
+			case vscode.CompletionItemKind.Value:
+				return ts.ScriptElementKind.enumElement
+
+			case vscode.CompletionItemKind.Field:
+				return ts.ScriptElementKind.constElement
+	
+
+			// By matching:
+			case vscode.CompletionItemKind.Event:
+				return ts.ScriptElementKind.functionElement
+
+
+			// Haven't find match:
+			case vscode.CompletionItemKind.Color:
+			case vscode.CompletionItemKind.File:
+			case vscode.CompletionItemKind.Operator:
+			case vscode.CompletionItemKind.Snippet:
+			case vscode.CompletionItemKind.Struct:
+			case vscode.CompletionItemKind.Unit:
+
 			default:
 				return ts.ScriptElementKind.unknown
 		}

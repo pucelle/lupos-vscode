@@ -1,4 +1,7 @@
-type CompletionItem = {
+import type * as TS from 'typescript'
+
+
+export type CompletionItem = {
 	readonly name: string
 	readonly description: string
 
@@ -8,8 +11,10 @@ type CompletionItem = {
 
 	/** Decide sort order, normally default value is `0`. */
 	readonly order?: number
+
+	readonly kind?: TS.ScriptElementKind
 }
 
-interface CompletionBooleanAttributeItem extends CompletionItem {
+export interface CompletionBooleanAttributeItem extends CompletionItem {
 	forElements?: string[]
 }

@@ -1,3 +1,6 @@
+import {CompletionItem} from './types'
+
+
 export const LuposControlFlowTags: CompletionItem[] = [
 	{
 		name: "lu:await",

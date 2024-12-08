@@ -1,7 +1,7 @@
 import type * as TS from 'typescript'
 import {LuposAnalyzer} from './analyzer'
 import {getScriptElementKind, getSymbolDisplayPartKind} from './utils'
-import {DOMBooleanAttributes, DOMElementEvents, DOMStyleProperties, isSimulatedEventName, LuposBindingModifiers, LuposComponentAttributes, LuposDOMEventModifiers, LuposDOMEventCategories, LuposSimulatedEvents} from '../complete-data'
+import {DOMBooleanAttributes, DOMElementEvents, DOMStyleProperties, isSimulatedEventName, LuposBindingModifiers, LuposComponentAttributes, LuposDOMEventModifiers, LuposDOMEventCategories, LuposSimulatedEvents, CompletionItem} from '../complete-data'
 import {TemplatePart, TemplatePartLocation, TemplatePartLocationType, TemplatePartType, TemplateSlotPlaceholder} from '../lupos-ts-module'
 import {Template} from '../template-service'
 import {ProjectContext} from '../core'
@@ -178,7 +178,7 @@ export class LuposQuickInfo {
 		return undefined
 	}
 
-	private makeQuickInfo(item: CompletionItem & {type ?: TS.Type} | undefined, part: TemplatePart, location: TemplatePartLocation): TS.QuickInfo | undefined{
+	private makeQuickInfo(item: QuickInfoItem | undefined, part: TemplatePart, location: TemplatePartLocation): TS.QuickInfo | undefined{
 		if (!item || (!item.type && !item.description)) {
 			return undefined
 		}

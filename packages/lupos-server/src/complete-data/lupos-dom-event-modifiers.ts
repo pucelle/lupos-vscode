@@ -1,3 +1,6 @@
+import {CompletionItem} from './types'
+
+
 type EventCategory = 'global' | 'keyCode' | 'mouse' | 'change' | 'wheel'
 
 

@@ -2,6 +2,7 @@ import {DOMBooleanAttributes} from './dom-boolean-attributes'
 import {DOMElementNames} from './dom-elements'
 import {LuposBindingModifiers} from './lupos-binding-modifiers'
 import {LuposSimulatedEvents} from './lupos-simulated-events'
+import {CompletionItem} from './types'
 
 
 /** Filter completion items. */

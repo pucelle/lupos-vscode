@@ -4,7 +4,7 @@
 
 import type * as TS from 'typescript'
 import {Template, TemplateProvider, TemplateLanguageService, TemplateServiceRouter} from '../template-service'
-import {Logger, ProjectContext, ts} from '../core'
+import {ProjectContext, ts} from '../core'
 
 
 /** from `(A, B) => C` to `(D: () => C, A, B) => C` */
@@ -90,8 +90,6 @@ export class TSLanguageServiceProxy {
 				return callOriginal()
 			}
 
-			Logger.log(gloOffset)
-
 			// Replace with lupos template completion.
 			if (this.templateService.getCompletionsAtPosition) {
 				let temOffset = template.globalOffsetToLocal(gloOffset)
@@ -100,8 +98,6 @@ export class TSLanguageServiceProxy {
 				if (info) {
 					info.entries.forEach(entry => this.translateTextSpan(entry.replacementSpan, template!))
 				}
-
-				Logger.log(info)
 
 				return info
 			}

@@ -1,3 +1,6 @@
+import {CompletionItem} from './types'
+
+
 export interface ModifierCompletionDataItem extends CompletionItem {
 	group?: number
 }

@@ -1,3 +1,4 @@
+import {CompletionItem} from '../complete-data'
 import {ts} from '../core'
 import {TemplatePart, TemplatePartLocation, TemplatePartLocationType, TemplatePartType, TemplateSlotPlaceholder} from '../lupos-ts-module'
 import type * as TS from 'typescript'
@@ -10,6 +11,10 @@ export function getScriptElementKind(
 ): TS.ScriptElementKind {
 	if (!part) {
 		return ts.ScriptElementKind.classElement
+	}
+
+	if (item.kind !== undefined) {
+		return item.kind
 	}
 
 	switch (part.type) {

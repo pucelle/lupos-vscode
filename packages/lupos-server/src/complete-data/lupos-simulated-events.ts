@@ -1,3 +1,5 @@
+import {CompletionItem} from './types'
+
 
 export const LuposSimulatedEvents: CompletionItem[] = [
 	{

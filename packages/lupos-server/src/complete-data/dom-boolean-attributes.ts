@@ -1,3 +1,6 @@
+import {CompletionBooleanAttributeItem} from './types'
+
+
 /** From MDN */
 export const DOMBooleanAttributes: CompletionBooleanAttributeItem[] = [
 	{

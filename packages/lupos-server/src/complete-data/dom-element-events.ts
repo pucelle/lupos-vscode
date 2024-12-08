@@ -1,3 +1,6 @@
+import {CompletionItem} from './types'
+
+
 /** From MDN */
 export const DOMElementEvents: CompletionItem[] = [
 	{

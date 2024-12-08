@@ -44,6 +44,8 @@ export class TemplateServiceRouter implements TemplateLanguageService {
 		let vsRegionCompletions = this.getVSCodeCompletionItems(region, regPosition)
 		if (vsRegionCompletions) {
 			let completions = VS2TSTranslator.translateVSCompletionToTS(vsRegionCompletions, region)
+			Logger.log(completions)
+
 			if (completions) {
 				tsCompletions.entries.push(...completions.entries)
 			}
