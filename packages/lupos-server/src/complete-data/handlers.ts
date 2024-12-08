@@ -1,4 +1,5 @@
 import {DOMBooleanAttributes} from './dom-boolean-attributes'
+import {DOMElementNames} from './dom-elements'
 import {LuposBindingModifiers} from './lupos-binding-modifiers'
 import {LuposSimulatedEvents} from './lupos-simulated-events'
 
@@ -24,6 +25,13 @@ export function filterBooleanAttributeCompletionItems(label: string, tagName: st
 
 		return item.name.startsWith(label)
 	})
+}
+
+
+/** Filter dom element completions. */
+export function filterDOMElementCompletionItems(label: string): CompletionItem[] {
+	let names = DOMElementNames.filter(name => !label || name.startsWith(label))
+	return names.map(name => ({name, description: ''}))
 }
 
 

@@ -65,7 +65,7 @@ export class LuposQuickInfo {
 			&& TemplateSlotPlaceholder.isComponent(part.node.tagName!)
 			&& location.type === TemplatePartLocationType.Name
 		) {
-			let info = LuposComponentAttributes.find(item => item.name === part.rawName)
+			let info = LuposComponentAttributes.find(item => item.name === part.mainName)
 			if (info) {
 				return this.makeQuickInfo(info, part, location)
 			}
