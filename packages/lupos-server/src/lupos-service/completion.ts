@@ -3,7 +3,7 @@ import {getScriptElementKind} from './utils'
 import {TemplatePart, TemplatePartType, TemplateSlotPlaceholder, TemplatePartLocation, TemplatePartLocationType} from '../lupos-ts-module'
 import {Logger, ProjectContext} from '../core'
 import {LuposAnalyzer} from './analyzer'
-import {LuposSimulatedEvents, filterCompletionItems, LuposControlFlowTags, LuposDOMEventModifiers, LuposDOMEventCategories, DOMStyleProperties, DOMElementEvents, LuposBindingModifiers, filterBooleanAttributeCompletionItems, getBindingModifierCompletionItems, findFullyMatchedCompletionItem, mapCompletionItems, LuposComponentAttributes, filterDOMElementCompletionItems} from '../complete-data'
+import {LuposSimulatedEvents, filterCompletionItems, LuposControlFlowTags, LuposDOMEventModifiers, LuposDOMEventCategories, DOMStyleProperties, DOMElementEvents, LuposBindingModifiers, filterBooleanAttributeCompletionItems, getBindingModifierCompletionItems, findFullyMatchedCompletionItem, LuposComponentAttributes, filterDOMElementCompletionItems, mapCompletionItems} from '../complete-data'
 import {Template} from '../template-service'
 
 
@@ -259,7 +259,10 @@ export class LuposCompletion {
 		// `@cli|`, complete event name.
 		if (location.type === TemplatePartLocationType.Name) {
 			let comEvents = components.map(com => this.analyzer.getComponentEventsForCompletion(com, mainName)).flat()
-			let comItems = part.namePrefix === '@' ? mapCompletionItems(comEvents, item => ({...item, name: '@' + item.name})) : comEvents
+
+			// Shows component events before others.
+			let comItems = mapCompletionItems(comEvents, item => ({...item, order: -1}))
+
 			let simItems = part.namePrefix === '@' ? filterCompletionItems(LuposSimulatedEvents, mainName) : []
 			let eventItems = [...comItems, ...domEvents, ...simItems]
 
@@ -312,7 +315,7 @@ export class LuposCompletion {
 			return {
 				name: item.name,
 				kind,
-				sortText: item.name,
+				sortText: String(item.order ?? 0),
 				insertText: item.name,
 				replacementSpan,
 			}
