@@ -60,13 +60,15 @@ export class Template implements OriginTranslator {
 		partsParser.parse()
 
 		// Print parts:
-		// Logger.log(this.content)
+		// if (this.content.includes('<AsyncLiveRepeat')) {
+		// 	Logger.log(this.content)
 
-		// for (let part of this.parts) {
-		// 	let p = {...part} as any
-		// 	p.node = null
+		// 	for (let part of this.parts) {
+		// 		let p = {...part} as any
+		// 		p.node = null
 
-		// 	Logger.log(p)
+		// 		Logger.log(p)
+		// 	}
 		// }
 	}
 
@@ -89,13 +91,13 @@ export class Template implements OriginTranslator {
 
 			// `<|`
 			if (text[offset - 1] === '<'
-				&& (offset === text.length - 1 || !/\w/.test(text[offset + 1]))
+				&& (offset === text.length || !/\w/.test(text[offset]))
 			) {
 				return {
 					type: TemplatePartType.NormalStartTag,
-					rawName: '',
+					rawName: null,
 					namePrefix: null,
-					mainName: '',
+					mainName: null,
 					modifiers: null,
 					strings: null,
 					valueIndices: null,

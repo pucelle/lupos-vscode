@@ -1,9 +1,13 @@
 import {ts} from '../core'
-import {TemplatePart, TemplatePartLocation, TemplatePartLocationType, TemplatePartType} from '../lupos-ts-module'
+import {TemplatePart, TemplatePartLocation, TemplatePartLocationType, TemplatePartType, TemplateSlotPlaceholder} from '../lupos-ts-module'
 import type * as TS from 'typescript'
 
 
-export function getScriptElementKindFromToken(part: TemplatePart | undefined, location: TemplatePartLocation): TS.ScriptElementKind {
+export function getScriptElementKind(
+	item: CompletionItem,
+	part: TemplatePart | undefined,
+	location: TemplatePartLocation
+): TS.ScriptElementKind {
 	if (!part) {
 		return ts.ScriptElementKind.classElement
 	}
@@ -11,11 +15,24 @@ export function getScriptElementKindFromToken(part: TemplatePart | undefined, lo
 	switch (part.type) {
 		case TemplatePartType.Component:
 		case TemplatePartType.DynamicComponent:
-		case TemplatePartType.SlotTag:
-		case TemplatePartType.FlowControl:
 			return ts.ScriptElementKind.classElement
 
+		case TemplatePartType.FlowControl:
+			return ts.ScriptElementKind.keyword
+		
+		case TemplatePartType.SlotTag:
 		case TemplatePartType.NormalStartTag:
+
+			// For `<|`
+			if (!part.node.tagName) {
+				if (TemplateSlotPlaceholder.isComponent(item.name)) {
+					return ts.ScriptElementKind.classElement
+				}
+				else if (item.name.startsWith('lu:')) {
+					return ts.ScriptElementKind.keyword
+				}
+			}
+
 			return ts.ScriptElementKind.string
 		
 		case TemplatePartType.Binding:
@@ -58,7 +75,7 @@ export function getScriptElementKindFromToken(part: TemplatePart | undefined, lo
 }
 
 
-export function getSymbolDisplayPartKindFromToken(part: TemplatePart, location: TemplatePartLocation): TS.SymbolDisplayPartKind {
+export function getSymbolDisplayPartKind(part: TemplatePart, location: TemplatePartLocation): TS.SymbolDisplayPartKind {
 	switch (part.type) {
 		case TemplatePartType.Component:
 		case TemplatePartType.DynamicComponent:

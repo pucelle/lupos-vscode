@@ -1,6 +1,6 @@
 import type * as TS from 'typescript'
 import {LuposAnalyzer, LuposItem} from './analyzer'
-import {getScriptElementKindFromToken} from './utils'
+import {getScriptElementKind} from './utils'
 import {Template} from '../template-service'
 import {TemplatePart, TemplatePartLocation, TemplatePartLocationType, TemplatePartType} from '../lupos-ts-module'
 import {ProjectContext} from '../core'
@@ -84,7 +84,7 @@ export class LuposDefinition {
 
 		let nameNode = item.nameNode
 		let name = item.name
-		let kind = getScriptElementKindFromToken(part, location)
+		let kind = getScriptElementKind(item, part, location)
 		let fileName = nameNode.getSourceFile().fileName
 
 		let textSpan: TS.TextSpan = {

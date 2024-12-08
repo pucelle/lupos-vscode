@@ -9,6 +9,12 @@ export function filterCompletionItems(items: CompletionItem[], label: string): C
 }
 
 
+/** Find unique completion item where name fully match. */
+export function findFullyMatchedCompletionItem(items: CompletionItem[], name: string): CompletionItem | undefined {
+	return items.find(item => item.name === name)
+}
+
+
 /** Filter boolean attribute completion items. */
 export function filterBooleanAttributeCompletionItems(label: string, tagName: string): CompletionItem[] {
 	return DOMBooleanAttributes.filter(item => {
