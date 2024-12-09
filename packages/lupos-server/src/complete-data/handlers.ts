@@ -77,23 +77,14 @@ export function getBindingModifierCompletionItems(mainName: string, modifiers: s
 
 
 /** Map completion items. */
-export function mapCompletionItems(items: CompletionItem[], map: (item: CompletionItem) => CompletionItem): CompletionItem[] {
-	return items.map(item => map({
-		name: item.name,
-		description: item.description,
-		start: item.start,
-		end: item.end,
-	}))
-}
-
-
-/** Map completion items. */
 export function assignCompletionItems(items: CompletionItem[], assignment: Partial<CompletionItem>): CompletionItem[] {
 	return items.map(item => ({
 		name: assignment.name ?? item.name,
 		description: assignment.description ?? item.description,
 		start: assignment.start ?? item.start,
 		end: assignment.end ?? item.end,
+		kind: assignment.kind ?? item.kind,
+		order: assignment.order ?? item.order,
 	}))
 }
 

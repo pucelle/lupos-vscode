@@ -3,7 +3,7 @@ import {getScriptElementKind} from './utils'
 import {TemplatePart, TemplatePartType, TemplateSlotPlaceholder, TemplatePartLocation, TemplatePartLocationType} from '../lupos-ts-module'
 import {ProjectContext, ts} from '../core'
 import {LuposAnalyzer} from './analyzer'
-import {LuposSimulatedEvents, filterCompletionItems, LuposControlFlowTags, LuposDOMEventModifiers, LuposDOMEventCategories, DOMStyleProperties, DOMElementEvents, LuposBindingModifiers, filterBooleanAttributeCompletionItems, getBindingModifierCompletionItems, findFullyMatchedCompletionItem, LuposComponentAttributes, filterDOMElementCompletionItems, mapCompletionItems, CompletionItem} from '../complete-data'
+import {LuposSimulatedEvents, filterCompletionItems, LuposControlFlowTags, LuposDOMEventModifiers, LuposDOMEventCategories, DOMStyleProperties, DOMElementEvents, LuposBindingModifiers, filterBooleanAttributeCompletionItems, getBindingModifierCompletionItems, findFullyMatchedCompletionItem, LuposComponentAttributes, filterDOMElementCompletionItems, CompletionItem, assignCompletionItems} from '../complete-data'
 import {Template} from '../template-service'
 
 
@@ -251,18 +251,16 @@ export class LuposCompletion {
 		let components = isComponent ? [...this.analyzer.getComponentsByTagName(tagName, template)] : []
 		let domEvents = part.namePrefix === '@' ? filterCompletionItems(DOMElementEvents, mainName) : []
 		let fullyMatchedDomEvent = findFullyMatchedCompletionItem(domEvents, mainName)
-
-		// Consist with like `onclick`.
-		let domItems = mapCompletionItems(domEvents, item => ({...item, kind: ts.ScriptElementKind.enumElement}))
+		let domItems = assignCompletionItems(domEvents, {kind: ts.ScriptElementKind.enumElement})
 
 		// `@cli|`, complete event name.
 		if (location.type === TemplatePartLocationType.Name) {
 			let comEvents = components.map(com => this.analyzer.getComponentEventsForCompletion(com, mainName)).flat()
+			let comItems = assignCompletionItems(comEvents, {order: -1})
 
-			// Shows component events before others.
-			let comItems = mapCompletionItems(comEvents, item => ({...item, order: -1}))
+			let simEvents = part.namePrefix === '@' ? filterCompletionItems(LuposSimulatedEvents, mainName) : []
+			let simItems = assignCompletionItems(simEvents, {order: 1, kind: ts.ScriptElementKind.enumMemberElement})
 
-			let simItems = part.namePrefix === '@' ? filterCompletionItems(LuposSimulatedEvents, mainName) : []
 			let eventItems = [...comItems, ...domItems, ...simItems]
 
 			items.push(...eventItems)

@@ -111,9 +111,7 @@ export class TemplateProvider {
 	}
 
 	private createScopeTree(sourceFile: TS.SourceFile) {
-		let scopeTree = new ScopeTree(this.context.helper)
-		scopeTree.visitSourceFile(sourceFile)
-
+		let scopeTree = new ScopeTree(sourceFile, this.context.helper)
 		return scopeTree
 	}
 }
