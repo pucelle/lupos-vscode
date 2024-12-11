@@ -230,5 +230,23 @@ export const DOMElementEvents: CompletionItem[] = [
 	{
 		name: "waiting",
 		description: "Playback has stopped because of a temporary lack of data.",
-	}
+	},
+
+	// Lupos transition extending
+	{
+		name: "transition-enter-started",
+		description: "After enter transition bound with ':transition' started."
+	},
+	{
+		name: "transition-enter-ended",
+		description: "After enter transition bound with ':transition' ended."
+	},
+	{
+		name: "transition-leave-started",
+		description: "After leave transition bound with ':transition' started."
+	},
+	{
+		name: "transition-leave-ended",
+		description: "After leave transition bound with ':transition' started."
+	},
 ]

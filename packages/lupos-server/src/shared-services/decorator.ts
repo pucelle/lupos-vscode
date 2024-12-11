@@ -5,6 +5,7 @@
 import type * as TS from 'typescript'
 import {Template, TemplateProvider, TemplateLanguageService, TemplateServiceRouter} from '../template-service'
 import {ProjectContext, ts} from '../core'
+import {DiagnosticModifier} from '../lupos-ts-module'
 
 
 /** from `(A, B) => C` to `(D: () => C, A, B) => C` */
@@ -226,25 +227,26 @@ export class TSLanguageServiceProxy {
 	}
 
 	private wrapGetSemanticDiagnostics() {
-		if (!this.templateService.getSemanticDiagnostics) {
+		if (!this.templateService.modifySemanticDiagnostics) {
 			return
 		}
 
 		this.wrap('getSemanticDiagnostics', (callOriginal, fileName: string) => {
-			let diagnostics: TS.Diagnostic[] = []
+			let diagnostics = callOriginal()
 
-			for (let template of this.templateProvider.getAllTemplates(fileName)) {
-				let subDiagnostics = this.templateService.getSemanticDiagnostics!(template)
-
-				subDiagnostics.forEach(diagnostic => {
-					diagnostic.start = template.localOffsetToGlobal(diagnostic.start!)
-				})
-
-				diagnostics.push(...subDiagnostics)
+			let sourceFile = this.context.program.getSourceFile(fileName)
+			if (!sourceFile) {
+				return diagnostics
 			}
 
-			// Merge original diagnostics with template ones.
-			return [...callOriginal(), ...diagnostics]
+			let modifier = new DiagnosticModifier(this.context.helper)
+			modifier.setStart(diagnostics, sourceFile)
+
+			for (let template of this.templateProvider.getAllTemplates(fileName)) {
+				this.templateService.modifySemanticDiagnostics!(template, modifier)
+			}
+
+			return modifier.getModified()
 		})
 	}
 

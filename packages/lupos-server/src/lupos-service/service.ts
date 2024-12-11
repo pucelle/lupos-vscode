@@ -1,11 +1,11 @@
 import type * as TS from 'typescript'
-import {LuposAnalyzer} from './analyzer/analyzer'
+import {WorkSpaceAnalyzer} from './analyzer/analyzer'
 import {LuposCompletion} from './completion'
 import {LuposQuickInfo} from './quickinfo'
 import {LuposDefinition} from './definition'
 import {ProjectContext} from '../core'
 import {Template} from '../template-service'
-import {getTemplatePartLocation} from '../lupos-ts-module'
+import {DiagnosticModifier, getTemplatePartLocationAt, TemplateDiagnostics} from '../lupos-ts-module'
 
 
 /** Provide lupos language service for a single. */
@@ -13,17 +13,19 @@ export class LuposService {
 
 	readonly context: ProjectContext
 
-	private analyzer: LuposAnalyzer
+	private analyzer: WorkSpaceAnalyzer
 	private completion: LuposCompletion
 	private quickInfo: LuposQuickInfo
 	private definition: LuposDefinition
+	private diagnostics: TemplateDiagnostics
 
 	constructor(context: ProjectContext) {
 		this.context = context
-		this.analyzer = new LuposAnalyzer(context)
+		this.analyzer = new WorkSpaceAnalyzer(context)
 		this.completion = new LuposCompletion(this.analyzer)
 		this.quickInfo = new LuposQuickInfo(this.analyzer)
 		this.definition = new LuposDefinition(this.analyzer)
+		this.diagnostics = new TemplateDiagnostics(this.analyzer)
 	}
 
 	/** Make sure to reload changed source files. */
@@ -37,7 +39,7 @@ export class LuposService {
 			return undefined
 		}
 
-		let location = getTemplatePartLocation(part, temOffset)
+		let location = getTemplatePartLocationAt(part, temOffset)
 		if (!location) {
 			return undefined
 		}
@@ -53,7 +55,7 @@ export class LuposService {
 			return undefined
 		}
 
-		let location = getTemplatePartLocation(part, temOffset)
+		let location = getTemplatePartLocationAt(part, temOffset)
 		if (!location) {
 			return undefined
 		}
@@ -69,7 +71,7 @@ export class LuposService {
 			return undefined
 		}
 
-		let location = getTemplatePartLocation(part, temOffset)
+		let location = getTemplatePartLocationAt(part, temOffset)
 		if (!location) {
 			return undefined
 		}
@@ -77,5 +79,9 @@ export class LuposService {
 		this.beFresh()
 		
 		return this.definition.getDefinition(part, location, template)
+	}
+
+	modifyDiagnostics(template: Template, modifier: DiagnosticModifier) {
+		this.diagnostics.diagnose(template.getAllParts(), template, modifier)
 	}
 }

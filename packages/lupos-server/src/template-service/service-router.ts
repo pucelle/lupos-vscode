@@ -7,6 +7,7 @@ import {TemplateLanguageService} from './types'
 import {Template} from './template'
 import {TemplateEmbeddedRegion} from './embedded-region'
 import {SharedCSSService, SharedHTMLService} from '../shared-services'
+import {DiagnosticModifier} from '../lupos-ts-module'
 
 
 /**
@@ -44,8 +45,6 @@ export class TemplateServiceRouter implements TemplateLanguageService {
 		let vsRegionCompletions = this.getVSCodeCompletionItems(region, regPosition)
 		if (vsRegionCompletions) {
 			let completions = VS2TSTranslator.translateVSCompletionToTS(vsRegionCompletions, region)
-			Logger.log(completions)
-
 			if (completions) {
 				tsCompletions.entries.push(...completions.entries)
 			}
@@ -149,17 +148,21 @@ export class TemplateServiceRouter implements TemplateLanguageService {
 		return ranges.map(range => VS2TSTranslator.translateOutliningSpanToTS(range, region))
 	}
 
-	getSemanticDiagnostics(template: Template): TS.Diagnostic[] {
+	modifySemanticDiagnostics(template: Template, modifier: DiagnosticModifier) {
 		let region = template.embedded.getWholeTemplateRegion()
 
-		if (region.languageId === 'css') {
-			let stylesheet = region.stylesheet!
-			let diagnostics = SharedCSSService.doValidation(region.document, stylesheet)
-
-			return VS2TSTranslator.translateVSDiagnosticsToTS(diagnostics, template.sourceFile, region.document, region)
+		if (region.languageId === 'html') {
+			this.luposService.modifyDiagnostics(template, modifier)
 		}
+		else if (region.languageId === 'css') {
+			let stylesheet = region.stylesheet!
+			let vsDiags = SharedCSSService.doValidation(region.document, stylesheet)
+			let tsDiags = VS2TSTranslator.translateVSDiagnosticsToTS(vsDiags, template.sourceFile, region.document, region)
 
-		return []
+			for (let diag of tsDiags) {
+				modifier.add(diag)
+			}
+		}
 	}
 
 	getCodeFixesAtPosition(template: Template, start: number, end: number): TS.CodeFixAction[] {

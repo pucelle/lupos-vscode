@@ -1,4 +1,6 @@
-import {CompletionBooleanAttributeItem} from './types'
+interface CompletionBooleanAttributeItem extends CompletionDataItem {
+	forElements?: string[]
+}
 
 
 /** From MDN */

@@ -1,7 +1,7 @@
 import type * as TS from 'typescript'
 
 
-export type CompletionItem = {
+export interface CompletionItem extends CompletionDataItem {
 	readonly name: string
 	readonly description: string
 
@@ -13,8 +13,4 @@ export type CompletionItem = {
 	readonly order?: number
 
 	readonly kind?: TS.ScriptElementKind
-}
-
-export interface CompletionBooleanAttributeItem extends CompletionItem {
-	forElements?: string[]
 }

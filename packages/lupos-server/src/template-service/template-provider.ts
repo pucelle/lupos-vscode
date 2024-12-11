@@ -23,7 +23,7 @@ export class TemplateProvider {
 
 	/** Get a Template from specified offset position of source file. */
 	getTemplateAt(fileName: string, offset: number): Template | null {
-		let sourceFile = this.context.projectHelper.getSourceFile(fileName)
+		let sourceFile = this.context.program.getSourceFile(fileName)
 		let taggedNode = this.getTaggedNodeAt(fileName, offset)
 
 		if (!sourceFile || !taggedNode) {
@@ -40,8 +40,9 @@ export class TemplateProvider {
 	}
 
 	/** Get template node, but limit only the literal part. */
-	private getTaggedNodeAt(fileName: string, position: number): TS.TaggedTemplateExpression | null {
-		let currentNode = this.context.projectHelper.getNodeAtOffset(fileName, position)
+	private getTaggedNodeAt(fileName: string, offset: number): TS.TaggedTemplateExpression | null {
+		let sourceFile = this.context.program.getSourceFile(fileName)
+		let currentNode = sourceFile ? this.context.helper.getNodeAtOffset(sourceFile, offset) : undefined
 		if (!currentNode) {
 			return null
 		}
@@ -52,7 +53,7 @@ export class TemplateProvider {
 		}
 
 		// `${...|}` - If mouse is here, will capture a template tail node, stop too.
-		if (ts.isTemplateMiddleOrTemplateTail(currentNode) && currentNode.getStart() === position) {
+		if (ts.isTemplateMiddleOrTemplateTail(currentNode) && currentNode.getStart() === offset) {
 			return null
 		}
 
@@ -87,7 +88,7 @@ export class TemplateProvider {
 
 	/** Get all Template from source file. */
 	getAllTemplates(fileName: string): Template[] {
-		let sourceFile = this.context.projectHelper.getSourceFile(fileName)
+		let sourceFile = this.context.program.getSourceFile(fileName)
 		if (!sourceFile) {
 			return []
 		}
@@ -111,7 +112,9 @@ export class TemplateProvider {
 	}
 
 	private createScopeTree(sourceFile: TS.SourceFile) {
-		let scopeTree = new ScopeTree(sourceFile, this.context.helper)
+		let scopeTree = new ScopeTree(this.context.helper)
+		scopeTree.visitSourceFile(sourceFile)
+
 		return scopeTree
 	}
 }

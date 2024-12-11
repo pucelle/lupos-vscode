@@ -1,5 +1,5 @@
 import type * as TS from 'typescript'
-import {LuposAnalyzer, LuposItem} from './analyzer'
+import {WorkSpaceAnalyzer, LuposItem} from './analyzer'
 import {getScriptElementKind} from './utils'
 import {Template} from '../template-service'
 import {TemplatePart, TemplatePartLocation, TemplatePartLocationType, TemplatePartType} from '../lupos-ts-module'
@@ -9,10 +9,10 @@ import {ProjectContext} from '../core'
 /** Provide lupos definition service. */
 export class LuposDefinition {
 
-	readonly analyzer: LuposAnalyzer
+	readonly analyzer: WorkSpaceAnalyzer
 	readonly context: ProjectContext
 
-	constructor(analyzer: LuposAnalyzer) {
+	constructor(analyzer: WorkSpaceAnalyzer) {
 		this.analyzer = analyzer
 		this.context = analyzer.context
 	}
@@ -21,7 +21,7 @@ export class LuposDefinition {
 
 		// `<A`
 		if (part.type === TemplatePartType.Component) {
-			let component = this.analyzer.getComponentsByTagName(part.node.tagName!, template)?.[0]
+			let component = this.analyzer.getComponentByTagName(part.node.tagName!, template)
 			return this.makeDefinitionInfo(component, part, location)
 		}
 
@@ -34,7 +34,7 @@ export class LuposDefinition {
 		// .xxx
 		else if (part.type === TemplatePartType.Property) {
 			if (location.type === TemplatePartLocationType.Name) {
-				let component = this.analyzer.getComponentsByTagName(part.node.tagName!, template)?.[0]
+				let component = this.analyzer.getComponentByTagName(part.node.tagName!, template)
 				let property = component ? this.analyzer.getComponentProperty(component, part.mainName!) : undefined
 
 				return this.makeDefinitionInfo(property, part, location)
@@ -44,7 +44,7 @@ export class LuposDefinition {
 		// @xxx
 		else if (part.type === TemplatePartType.Event) {
 			if (location.type === TemplatePartLocationType.Name) {
-				let component = this.analyzer.getComponentsByTagName(part.node.tagName!, template)?.[0]
+				let component = this.analyzer.getComponentByTagName(part.node.tagName!, template)
 				let event = component ? this.analyzer.getComponentEvent(component, part.mainName!) : undefined
 				return this.makeDefinitionInfo(event, part, location)
 			}
@@ -67,7 +67,7 @@ export class LuposDefinition {
 		else if (location.type === TemplatePartLocationType.Modifier) {
 			if (mainName === 'slot') {
 				let attrValue = attr.value!
-				let component = this.analyzer.getComponentsByTagName(part.node.tagName!, template)?.[0]
+				let component = this.analyzer.getComponentByTagName(part.node.tagName!, template)
 				let property = component ? this.analyzer.getComponentSubProperties(component, 'slotElements', attrValue) : undefined
 
 				return property

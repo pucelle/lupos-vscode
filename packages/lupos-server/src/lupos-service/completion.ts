@@ -1,26 +1,26 @@
 import type * as TS from 'typescript'
 import {getScriptElementKind} from './utils'
-import {TemplatePart, TemplatePartType, TemplateSlotPlaceholder, TemplatePartLocation, TemplatePartLocationType} from '../lupos-ts-module'
+import {TemplatePart, TemplatePartType, TemplateSlotPlaceholder, TemplatePartLocation, TemplatePartLocationType, LuposControlFlowTags, LuposBindingModifiers, LuposSimulatedEvents, LuposDOMEventModifiers, LuposDOMEventCategories, LuposComponentAttributes, getBindingModifierCompletionItems, findCompletionDataItem} from '../lupos-ts-module'
 import {ProjectContext, ts} from '../core'
-import {LuposAnalyzer} from './analyzer'
-import {LuposSimulatedEvents, filterCompletionItems, LuposControlFlowTags, LuposDOMEventModifiers, LuposDOMEventCategories, DOMStyleProperties, DOMElementEvents, LuposBindingModifiers, filterBooleanAttributeCompletionItems, getBindingModifierCompletionItems, findFullyMatchedCompletionItem, LuposComponentAttributes, filterDOMElementCompletionItems, CompletionItem, assignCompletionItems} from '../complete-data'
+import {WorkSpaceAnalyzer} from './analyzer'
+import {filterCompletionItems, DOMStyleProperties, DOMElementEvents, filterBooleanAttributeCompletionItems, filterDOMElementCompletionItems, CompletionItem, assignCompletionItems} from '../complete-data'
 import {Template} from '../template-service'
 
 
 /** Provide lupos completion service. */
 export class LuposCompletion {
 
-	readonly analyzer: LuposAnalyzer
+	readonly analyzer: WorkSpaceAnalyzer
 	readonly context: ProjectContext
 
-	constructor(analyzer: LuposAnalyzer) {
+	constructor(analyzer: WorkSpaceAnalyzer) {
 		this.analyzer = analyzer
 		this.context = analyzer.context
 	}
 
 	getCompletions(part: TemplatePart, location: TemplatePartLocation, template: Template): TS.CompletionInfo | undefined {
 
-		// `<a|`, `<|`, `<A|`, `<lu:|`
+		// `<a`, `<`, `<A`, `<lu:`
 		if (part.type === TemplatePartType.Component
 			|| part.type === TemplatePartType.DynamicComponent
 			|| part.type === TemplatePartType.FlowControl
@@ -168,7 +168,7 @@ export class LuposCompletion {
 		let items: CompletionItem[] = []
 
 		// :slot="|name"
-		if (['slot'].includes(mainName)) {
+		if (['slot'].includes(mainName) && template.component) {
 			let currentComponent = this.analyzer.getComponentByDeclaration(template.component)!
 			let propertyItems = this.analyzer.getSubPropertiesForCompletion(currentComponent, 'slotElements', attrValue)
 
@@ -193,16 +193,12 @@ export class LuposCompletion {
 		let attr = part.attr!
 		let mainName = part.mainName!
 		let items: CompletionItem[] = []
-
 		
 		// `.|property|`, complete property name.
 		if (location.type === TemplatePartLocationType.Name) {
-			let components = this.analyzer.getComponentsByTagName(part.node.tagName!, template)
-
-			for (let component of components) {
-				let properties = this.analyzer.getComponentPropertiesForCompletion(component, mainName)
-				items.push(...properties)
-			}
+			let component = this.analyzer.getComponentByTagName(part.node.tagName!, template)
+			let properties = component ? this.analyzer.getComponentPropertiesForCompletion(component, mainName) : []
+			items.push(...properties)
 		}
 
 		// `.property="|"`, complete property value.
@@ -217,14 +213,9 @@ export class LuposCompletion {
 
 			// For `.prop="a" | "b" | "c"`
 			else {
-				let components = this.analyzer.getComponentsByTagName(part.node.tagName!, template)
-
-				for (let component of components) {
-					let property = this.analyzer.getComponentProperty(component, mainName)
-					if (!property) {
-						continue
-					}
-
+				let component = this.analyzer.getComponentByTagName(part.node.tagName!, template)
+				let property = component ? this.analyzer.getComponentProperty(component, mainName) : null
+				if (property) {
 					let typeStringList = this.context.helper.types.splitUnionTypeToStringList(property.type)
 
 					let typeItems = typeStringList.map(name => {
@@ -248,14 +239,14 @@ export class LuposCompletion {
 		let tagName = part.node.tagName!
 		let items: CompletionItem[] = []
 		let isComponent = TemplateSlotPlaceholder.isComponent(tagName)
-		let components = isComponent ? [...this.analyzer.getComponentsByTagName(tagName, template)] : []
+		let component = isComponent ? this.analyzer.getComponentByTagName(tagName, template) : null
 		let domEvents = part.namePrefix === '@' ? filterCompletionItems(DOMElementEvents, mainName) : []
-		let fullyMatchedDomEvent = findFullyMatchedCompletionItem(domEvents, mainName)
+		let fullyMatchedDomEvent = findCompletionDataItem(domEvents, mainName)
 		let domItems = assignCompletionItems(domEvents, {kind: ts.ScriptElementKind.enumElement})
 
 		// `@cli|`, complete event name.
 		if (location.type === TemplatePartLocationType.Name) {
-			let comEvents = components.map(com => this.analyzer.getComponentEventsForCompletion(com, mainName)).flat()
+			let comEvents = component ? this.analyzer.getComponentEventsForCompletion(component!, mainName) : []
 			let comItems = assignCompletionItems(comEvents, {order: -1})
 
 			let simEvents = part.namePrefix === '@' ? filterCompletionItems(LuposSimulatedEvents, mainName) : []

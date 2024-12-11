@@ -1,6 +1,7 @@
 import {Position} from 'vscode-languageserver-types'
 import {Template} from './template'
 import type * as TS from 'typescript'
+import {DiagnosticModifier} from '../lupos-ts-module'
 
 
 /** 
@@ -46,9 +47,10 @@ export interface TemplateLanguageService {
 		template: Template
 	): TS.Diagnostic[]
 
-	getSemanticDiagnostics?(
-		template: Template
-	): TS.Diagnostic[]
+	modifySemanticDiagnostics?(
+		template: Template,
+		modifier: DiagnosticModifier
+	): void
 
 	getFormattingEditsForRange?(
 		template: Template,

@@ -1,8 +1,8 @@
 import type * as TS from 'typescript'
-import {LuposAnalyzer} from './analyzer'
+import {WorkSpaceAnalyzer} from './analyzer'
 import {getScriptElementKind, getSymbolDisplayPartKind} from './utils'
-import {DOMBooleanAttributes, DOMElementEvents, DOMStyleProperties, isSimulatedEventName, LuposBindingModifiers, LuposComponentAttributes, LuposDOMEventModifiers, LuposDOMEventCategories, LuposSimulatedEvents, CompletionItem} from '../complete-data'
-import {TemplatePart, TemplatePartLocation, TemplatePartLocationType, TemplatePartType, TemplateSlotPlaceholder} from '../lupos-ts-module'
+import {DOMBooleanAttributes, DOMElementEvents, DOMStyleProperties, CompletionItem} from '../complete-data'
+import {TemplatePart, TemplatePartLocation, TemplatePartLocationType, isSimulatedEventName, TemplatePartType, TemplateSlotPlaceholder, LuposBindingModifiers, LuposComponentAttributes, LuposDOMEventModifiers, LuposDOMEventCategories, LuposSimulatedEvents,} from '../lupos-ts-module'
 import {Template} from '../template-service'
 import {ProjectContext} from '../core'
 
@@ -15,10 +15,10 @@ interface QuickInfoItem extends CompletionItem {
 /** Provide lupos quickinfo service. */
 export class LuposQuickInfo {
 
-	readonly analyzer: LuposAnalyzer
+	readonly analyzer: WorkSpaceAnalyzer
 	readonly context: ProjectContext
 
-	constructor(analyzer: LuposAnalyzer) {
+	constructor(analyzer: WorkSpaceAnalyzer) {
 		this.analyzer = analyzer
 		this.context = analyzer.context
 	}
@@ -28,7 +28,7 @@ export class LuposQuickInfo {
 
 		// `<A`
 		if (part.type === TemplatePartType.Component) {
-			let component = this.analyzer.getComponentsByTagName(part.node.tagName!, template)?.[0]
+			let component = this.analyzer.getComponentByTagName(part.node.tagName!, template)
 			return this.makeQuickInfo(component, part, location)
 		}
 
@@ -41,7 +41,7 @@ export class LuposQuickInfo {
 		// .xxx
 		else if (part.type === TemplatePartType.Property) {
 			if (location.type === TemplatePartLocationType.Name) {
-				let component = this.analyzer.getComponentsByTagName(part.node.tagName!, template)?.[0]
+				let component = this.analyzer.getComponentByTagName(part.node.tagName!, template)
 				let property = component ? this.analyzer.getComponentProperty(component, part.mainName!) : undefined
 
 				return this.makeQuickInfo(property, part, location)
@@ -134,7 +134,7 @@ export class LuposQuickInfo {
 		let attrValue = attr.value!
 
 		// :slot="|name"
-		if (['slot'].includes(mainName)) {
+		if (['slot'].includes(mainName) && template.component) {
 			let currentComponent = this.analyzer.getComponentByDeclaration(template.component)!
 			let propertyItems = this.analyzer.getSubPropertiesForCompletion(currentComponent, 'slotElements', attrValue)
 
@@ -149,8 +149,8 @@ export class LuposQuickInfo {
 		let tagName = part.node.tagName!
 		let isComponent = TemplateSlotPlaceholder.isComponent(tagName)
 		let isSimulatedEvent = isSimulatedEventName(mainName)
-		let components = isComponent ? [...this.analyzer.getComponentsByTagName(tagName, template)] : []
-		let componentEvents = isComponent ? components.map(com => this.analyzer.getComponentEventsForCompletion(com, mainName)).flat() : null
+		let component = isComponent ? this.analyzer.getComponentByTagName(tagName, template) : null
+		let componentEvents = component ? this.analyzer.getComponentEventsForCompletion(component, mainName) : null
 
 		// `@cli|`, find quick info of event name.
 		if (location.type === TemplatePartLocationType.Name) {

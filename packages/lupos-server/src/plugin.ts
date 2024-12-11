@@ -1,5 +1,5 @@
 import type * as TS from 'typescript'
-import {Logger, setGlobalContext, ProjectContext, ProjectHelper} from './core'
+import {Logger, setGlobalContext, ProjectContext} from './core'
 import {helperOfContext} from './lupos-ts-module'
 import {TSLanguageServiceProxy} from './shared-services/decorator'
 
@@ -30,7 +30,6 @@ export class LuposPlugin implements TS.server.PluginModule {
 		let programGetter = () => info.languageService.getProgram()!
 		let typeCheckerGetter = () => programGetter().getTypeChecker()
 		let helper = helperOfContext(this.ts, typeCheckerGetter)
-		let projectHelper = new ProjectHelper(project, helper) 
 
 		let context: ProjectContext = {
 			service: info.languageService,
@@ -44,7 +43,6 @@ export class LuposPlugin implements TS.server.PluginModule {
 				return typeCheckerGetter()
 			},
 			helper,
-			projectHelper,
 		}
 
 		Logger.initialize(info.project.projectService.logger)
