@@ -79,7 +79,7 @@ export class LuposQuickInfo {
 
 		// `:name|`, quick info of binding name.
 		if (location.type === TemplatePartLocationType.Name) {
-			let binding = this.analyzer.getBindingByNameAndTemplate(mainName, template)
+			let binding = this.analyzer.getBindingByName(mainName, template)
 			return binding
 		}
 

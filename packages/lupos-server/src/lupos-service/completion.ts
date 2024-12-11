@@ -129,7 +129,7 @@ export class LuposCompletion {
 		else {
 				
 			// Local declared.
-			let binding = this.analyzer.getBindingByNameAndTemplate(mainName, template)
+			let binding = this.analyzer.getBindingByName(mainName, template)
 
 			// All available parameters from binding constructor.
 			let availableModifiers: string[] | null = null

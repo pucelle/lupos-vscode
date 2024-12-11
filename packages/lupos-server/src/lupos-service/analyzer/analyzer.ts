@@ -11,6 +11,7 @@ export class WorkSpaceAnalyzer extends Analyzer {
 
 	/** All imported icons. */
 	private icons: Map<string, LuposIcon> = new Map()
+	private updating: boolean = false
 
 	constructor(context: ProjectContext) {
 		super(context.helper)
@@ -28,8 +29,16 @@ export class WorkSpaceAnalyzer extends Analyzer {
 		}
 	}
 
-	/** Update to make sure reloading changed source files. */
-	update() {
+	/** 
+	 * Update to make sure reloading changed source files.
+	 * Update for at most once within a micro task.
+	 */
+	async update() {
+		if (this.updating) {
+			return
+		}
+
+		this.updating = true
 		let changedFiles = this.compareFiles()
 
 		for (let file of changedFiles) {
@@ -39,6 +48,9 @@ export class WorkSpaceAnalyzer extends Analyzer {
 		if (changedFiles.size > 0) {
 			Logger.log(`Analyzed ${changedFiles.size} files`)
 		}
+
+		await Promise.resolve()
+		this.updating = false
 	}
 
 	/** Compare files, returned changed or not analyzed files, always exclude `lib.???.d.ts`. */

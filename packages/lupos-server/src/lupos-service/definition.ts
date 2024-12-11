@@ -3,7 +3,7 @@ import {WorkSpaceAnalyzer, LuposItem} from './analyzer'
 import {getScriptElementKind} from './utils'
 import {Template} from '../template-service'
 import {TemplatePart, TemplatePartLocation, TemplatePartLocationType, TemplatePartType} from '../lupos-ts-module'
-import {ProjectContext} from '../core'
+import {Logger, ProjectContext} from '../core'
 
 
 /** Provide lupos definition service. */
@@ -18,7 +18,8 @@ export class LuposDefinition {
 	}
 	
 	getDefinition(part: TemplatePart, location: TemplatePartLocation, template: Template): TS.DefinitionInfoAndBoundSpan | undefined {
-
+		Logger.log(location)
+			
 		// `<A`
 		if (part.type === TemplatePartType.Component) {
 			let component = this.analyzer.getComponentByTagName(part.node.tagName!, template)
@@ -59,7 +60,7 @@ export class LuposDefinition {
 
 		// `:name|`, complete binding name.
 		if (location.type === TemplatePartLocationType.Name) {
-			let binding = this.analyzer.getBindingByNameAndTemplate(mainName, template)
+			let binding = this.analyzer.getBindingByName(mainName, template)
 			return binding
 		}
 		
