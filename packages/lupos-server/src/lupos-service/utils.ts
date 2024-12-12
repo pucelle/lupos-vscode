@@ -108,6 +108,8 @@ export function getSymbolDisplayPartKind(part: TemplatePart, location: TemplateP
 			}
 
 		case TemplatePartType.Event:
+			
+			// DOM element event will be overwritten outside.
 			if (location.type === TemplatePartLocationType.Name) {
 				return ts.SymbolDisplayPartKind.functionName
 			}

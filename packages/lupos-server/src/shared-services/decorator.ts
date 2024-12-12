@@ -246,6 +246,7 @@ export class TSLanguageServiceProxy {
 				this.templateService.modifySemanticDiagnostics!(template, modifier)
 			}
 
+			// Diagnostics are already in global origin, no need to translate.
 			return modifier.getModified()
 		})
 	}
@@ -255,18 +256,18 @@ export class TSLanguageServiceProxy {
 			return
 		}
 
-		this.wrap('getFormattingEditsForRange', (callOriginal, fileName: string, gloStart: number, gloEnd: number, options: TS.FormatCodeSettings) => {
+		this.wrap('getFormattingEditsForRange', (callOriginal, fileName: string, startGlo: number, endGlo: number, options: TS.FormatCodeSettings) => {
 			let changes: TS.TextChange[] = []
 
 			for (let template of this.templateProvider.getAllTemplates(fileName)) {
-				if (!template.intersectWith(gloStart, gloEnd)) {
+				if (!template.intersectWith(startGlo, endGlo)) {
 					continue
 				}
 
-				let temStart = template.globalOffsetToLocal(gloStart)
-				let temEnd = template.globalOffsetToLocal(gloEnd)
+				let startTem = template.globalOffsetToLocal(startGlo)
+				let endTem = template.globalOffsetToLocal(endGlo)
 				
-				for (let change of this.templateService.getFormattingEditsForRange!(template, temStart, temEnd, options)) {
+				for (let change of this.templateService.getFormattingEditsForRange!(template, startTem, endTem, options)) {
 					this.translateTextSpan(change.span, template)
 					changes.push(change)
 				}
@@ -282,18 +283,18 @@ export class TSLanguageServiceProxy {
 			return
 		}
 
-		this.wrap('getCodeFixesAtPosition', (callOriginal, fileName: string, gloStart: number, gloEnd: number, errorCodes: ReadonlyArray<number>, options: TS.FormatCodeSettings, preferences: TS.UserPreferences) => {
+		this.wrap('getCodeFixesAtPosition', (callOriginal, fileName: string, startGlo: number, endGlo: number, errorCodes: ReadonlyArray<number>, options: TS.FormatCodeSettings, preferences: TS.UserPreferences) => {
 			let actions: TS.CodeFixAction[] = []
 
 			for (let template of this.templateProvider.getAllTemplates(fileName)) {
-				if (!template.intersectWith(gloStart, gloEnd)) {
+				if (!template.intersectWith(startGlo, endGlo)) {
 					continue
 				}
 
-				let temStart = template.globalOffsetToLocal(gloStart)
-				let temEnd = template.globalOffsetToLocal(gloEnd)
+				let startTem = template.globalOffsetToLocal(startGlo)
+				let endTem = template.globalOffsetToLocal(endGlo)
 
-				for (let action of this.templateService.getCodeFixesAtPosition!(template, temStart, temEnd, errorCodes, options, preferences)) {
+				for (let action of this.templateService.getCodeFixesAtPosition!(template, startTem, endTem, errorCodes, options, preferences)) {
 					action.changes.forEach(change => {
 						change.textChanges.forEach(change => {
 							this.translateTextSpan(change.span, template)

@@ -4,6 +4,7 @@ import * as vscode from 'vscode-languageserver-types'
 import {PluginConfig, ts} from '../core'
 import {OriginTranslator} from './types'
 import {TextDocument} from 'vscode-languageserver-textdocument'
+import {Template} from './template'
 
 
 /** 
@@ -266,16 +267,18 @@ export namespace VS2TSTranslator {
 		diagnostics: vscode.Diagnostic[],
 		sourceFile: TS.SourceFile,
 		document: TextDocument,
-		origin: OriginTranslator
+		origin: OriginTranslator,
+		template: Template
 	): TS.Diagnostic[] {
-		return diagnostics.map(diag => translateVSDiagnosticToTS(diag, sourceFile, document, origin)).filter(v => v) as TS.Diagnostic[]
+		return diagnostics.map(diag => translateVSDiagnosticToTS(diag, sourceFile, document, origin, template)).filter(v => v) as TS.Diagnostic[]
 	}
 
 	function translateVSDiagnosticToTS(
 		diagnostic: vscode.Diagnostic,
 		file: TS.SourceFile,
 		document: TextDocument,
-		origin: OriginTranslator
+		origin: OriginTranslator,
+		template: Template
 	): TS.Diagnostic | undefined {
 		
 		// Make sure returned error is within the real document.
@@ -286,8 +289,8 @@ export namespace VS2TSTranslator {
 			return undefined
 		}
 
-		let start = origin.localOffsetToTemplate(origin.localPositionToOffset(diagnostic.range.start))
-		let end = origin.localOffsetToTemplate(origin.localPositionToOffset(diagnostic.range.end))
+		let start = template.localOffsetToGlobal(origin.localPositionToOffset(diagnostic.range.start))
+		let end = template.localOffsetToGlobal(origin.localPositionToOffset(diagnostic.range.end))
 		let length = end - start
 		let code = typeof diagnostic.code === 'number' ? diagnostic.code : 0
 		

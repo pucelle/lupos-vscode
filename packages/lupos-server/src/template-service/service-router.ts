@@ -7,7 +7,7 @@ import {TemplateLanguageService} from './types'
 import {Template} from './template'
 import {TemplateEmbeddedRegion} from './embedded-region'
 import {SharedCSSService, SharedHTMLService} from '../shared-services'
-import {DiagnosticModifier} from '../lupos-ts-module'
+import {DiagnosticModifier, TemplatePartType} from '../lupos-ts-module'
 
 
 /**
@@ -149,21 +149,68 @@ export class TemplateServiceRouter implements TemplateLanguageService {
 	}
 
 	modifySemanticDiagnostics(template: Template, modifier: DiagnosticModifier) {
-		let region = template.embedded.getWholeTemplateRegion()
+		let wholeRegion = template.embedded.getWholeTemplateRegion()
+		let regions = template.embedded.getAllRegions()
 
-		if (region.languageId === 'html') {
-			this.luposService.modifyDiagnostics(template, modifier)
-		}
-		else if (region.languageId === 'css') {
-			let stylesheet = region.stylesheet!
-			let vsDiags = SharedCSSService.doValidation(region.document, stylesheet)
-			let tsDiags = VS2TSTranslator.translateVSDiagnosticsToTS(vsDiags, template.sourceFile, region.document, region)
+		for (let region of regions) {
+			if (region.languageId === 'html') {
+				this.luposService.modifyDiagnostics(template, modifier)
+			}
+			else if (region.languageId === 'css') {
+				let stylesheet = region.stylesheet!
+				let vsDiags = SharedCSSService.doValidation(region.document, stylesheet)
+				let tsDiags = VS2TSTranslator.translateVSDiagnosticsToTS(vsDiags, template.sourceFile, region.document, region, template)
 
-			for (let diag of tsDiags) {
-				modifier.add(diag)
+				// Means not filter inline style.
+				if (region === wholeRegion) {
+					tsDiags = this.filterCSSDiagnostics(tsDiags, vsDiags, template)
+				}
+
+				for (let diag of tsDiags) {
+					modifier.add(diag)
+				}
 			}
 		}
 	}
+
+	private filterCSSDiagnostics(tsDiags: TS.Diagnostic[], vsDiags: vscode.Diagnostic[], template: Template) {
+		return tsDiags.filter((tsDiag: TS.Diagnostic, index: number) => {
+			let vsDiag = vsDiags[index]
+
+			// An independent part: `.a{} ${...}` -> `.a{} _LUPOS_SLOT_INDEX_0_`,
+			// Get diagnostic `{` required.
+			if (vsDiag.code !== 'css-lcurlyexpected') {
+				return true
+			}
+
+			let startGlo = tsDiag.start!
+			let startTem = template.globalOffsetToLocal(startGlo)
+			let content = template.content
+
+			let part = template.parts.findLast(part => {
+				return part.type === TemplatePartType.SlottedText
+					&& part.start <= startTem
+					&& part.end >= startTem
+			})
+
+			if (!part) {
+				return true
+			}
+
+			let valueIndex = part.valueIndices?.findLast(index => index.end <= startTem)
+			if (!valueIndex) {
+				return true
+			}
+
+			// Diagnostic position located after a `$LUPOS_SLOT_INDEX_\d+$`, may place some whitespaces.
+			if (/^\s*$/.test(content.slice(valueIndex.end, startTem))) {
+				return false
+			}
+
+			return true
+		})
+	}
+
 
 	getCodeFixesAtPosition(template: Template, start: number, end: number): TS.CodeFixAction[] {
 		let region = template.embedded.getWholeTemplateRegion()

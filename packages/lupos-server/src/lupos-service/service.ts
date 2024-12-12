@@ -3,7 +3,7 @@ import {WorkSpaceAnalyzer} from './analyzer/analyzer'
 import {LuposCompletion} from './completion'
 import {LuposQuickInfo} from './quickinfo'
 import {LuposDefinition} from './definition'
-import {Logger, ProjectContext} from '../core'
+import {ProjectContext} from '../core'
 import {Template} from '../template-service'
 import {DiagnosticModifier, getTemplatePartLocationAt, TemplateDiagnostics} from '../lupos-ts-module'
 
@@ -66,21 +66,15 @@ export class LuposService {
 	}
 
 	getDefinition(template: Template, temOffset: number): TS.DefinitionInfoAndBoundSpan | undefined {
-		Logger.log(temOffset)
-		
 		let part = template.getPartAt(temOffset)
 		if (!part) {
 			return undefined
 		}
 
-		Logger.log(part.node.tagName)
-
 		let location = getTemplatePartLocationAt(part, temOffset)
 		if (!location) {
 			return undefined
 		}
-
-		Logger.log(location)
 
 		this.beFresh()
 		

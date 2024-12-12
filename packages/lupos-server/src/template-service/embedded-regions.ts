@@ -74,11 +74,19 @@ export class TemplateEmbeddedRegions {
 
 		if (languageId === 'css') {
 
-			// Get semantic diagnostics for second `$`.
-			content = content.replace(/(\$LUPOS_SLOT_INDEX_\d+)\$/g, '$1_')
+			// Cause semantic diagnostics for `$`.
+			content = content.replace(/\$(LUPOS_SLOT_INDEX_\d+)\$/g, '_$1_')
+
+			// Cause semantic diagnostics for `$`.
+			content = content.replace(/\$(LUPOS_SLOT_INDEX_\d+)\$/g, '_$1_')
 		}
 
 		return new TemplateEmbeddedRegion(content, languageId, start, end, offset)
+	}
+
+	/** Get all the regions. */
+	getAllRegions(): TemplateEmbeddedRegion[] {
+		return this.regions
 	}
 
 	/** 

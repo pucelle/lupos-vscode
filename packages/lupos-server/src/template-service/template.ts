@@ -18,11 +18,11 @@ export class Template extends TemplateBasis implements OriginTranslator {
 	readonly parts: TemplatePart[] = []
 
 	constructor(tagName: 'html' | 'svg' | 'css', node: TS.TemplateLiteral, scopeTree: ScopeTree, context: ProjectContext) {
-		let {string, mapper} = TemplateSlotPlaceholder.toTemplateString(node)
+		let {string, mapper} = TemplateSlotPlaceholder.toTemplateContent(node)
 		let valueNodes = TemplateSlotPlaceholder.extractTemplateValues(node)
 		let root = HTMLRoot.fromString(string)
 
-		super(tagName, node, string, root, valueNodes, mapper,scopeTree, context.helper)
+		super(tagName, node, string, root, valueNodes, mapper, scopeTree, context.helper)
 
 		this.context = context
 		this.embedded = new TemplateEmbeddedRegions(this)
