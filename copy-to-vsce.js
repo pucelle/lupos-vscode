@@ -1,11 +1,13 @@
-// We copy files to package and publish because vsce can't work for linked directory.
+// We copy files to package and publish because vsce package can't work with linked directory.
 
 const fs = require('fs-extra')
 const path = require('path')
 
+
+// Copy to vsce
 let fromDir = path.dirname(__filename)
 let toDir = path.dirname(__filename) + '/vsce'
-let excludeNames = ['.gitignore', '.vscode', '.git', 'packages', 'vsce', 'tsconfig.json', 'src', 'copy-to-vsce.js', 'package-lock.json']
+let excludeNames = ['.gitignore', '.gitmodules', '.vscode', '.git', 'packages', 'vsce', 'tsconfig.json', 'tsconfig.tsbuildinfo', 'src', 'copy-to-vsce.js', 'package-lock.json']
 
 fs.ensureDirSync(toDir)
 
@@ -17,11 +19,7 @@ for (let fileOrFolderName of fileOrFolderNames) {
 }
 
 
-function replaceText(relativePath, from, to) {
-	let text = fs.readFileSync(toDir + '/' + relativePath).toString('utf8')
-	text = text.replace(from, to)
-	fs.writeFileSync(toDir + '/' + relativePath, text)
-}
-
-replaceText('package.json', /^.*"vscode:prepublish".+\n/m, '')
-replaceText('node_modules/typescript-flit/out/config.js', 'debugging: true', 'debugging: false')
+let packageJson = fs.readJSONSync(toDir + '/package.json')
+delete packageJson.scripts
+delete packageJson.devDependencies
+fs.writeJSONSync(toDir + '/package.json', packageJson, {spaces: '\t'})

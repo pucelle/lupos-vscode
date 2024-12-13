@@ -13,10 +13,10 @@ export class TemplateEmbeddedRegion implements OriginTranslator {
 	/** Document of embedded content. */
 	document: TextDocument
 	
-	/** Start location, relative to template virtual document. */
+	/** Start offset, relative to template virtual document. */
 	start: number
 	
-	/** End location, relative to template virtual document. */
+	/** End offset, relative to template virtual document. */
 	end: number
 
 	/** 

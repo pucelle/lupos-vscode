@@ -2,7 +2,7 @@ import type * as TS from 'typescript'
 import {WorkSpaceAnalyzer, LuposItem} from './analyzer'
 import {getScriptElementKind} from './utils'
 import {Template} from '../template-service'
-import {TemplatePart, TemplatePartLocation, TemplatePartLocationType, TemplatePartType} from '../lupos-ts-module'
+import {TemplatePart, TemplatePartPiece, TemplatePartPieceType, TemplatePartType} from '../lupos-ts-module'
 import {ProjectContext} from '../core'
 
 
@@ -17,54 +17,54 @@ export class LuposDefinition {
 		this.context = analyzer.context
 	}
 	
-	getDefinition(part: TemplatePart, location: TemplatePartLocation, template: Template): TS.DefinitionInfoAndBoundSpan | undefined {
+	getDefinition(part: TemplatePart, piece: TemplatePartPiece, template: Template): TS.DefinitionInfoAndBoundSpan | undefined {
 
 		// `<A`
 		if (part.type === TemplatePartType.Component) {
 			let component = this.analyzer.getComponentByTagName(part.node.tagName!, template)
-			return this.makeDefinitionInfo(component, part, location)
+			return this.makeDefinitionInfo(component, part, piece)
 		}
 
 		// :xxx
 		else if (part.type === TemplatePartType.Binding) {
-			let item = this.getBindingDefinition(part, location, template)
-			return this.makeDefinitionInfo(item, part, location)
+			let item = this.getBindingDefinition(part, piece, template)
+			return this.makeDefinitionInfo(item, part, piece)
 		}
 
 		// .xxx
 		else if (part.type === TemplatePartType.Property) {
-			if (location.type === TemplatePartLocationType.Name) {
+			if (piece.type === TemplatePartPieceType.Name) {
 				let component = this.analyzer.getComponentByTagName(part.node.tagName!, template)
 				let property = component ? this.analyzer.getComponentProperty(component, part.mainName!) : undefined
 
-				return this.makeDefinitionInfo(property, part, location)
+				return this.makeDefinitionInfo(property, part, piece)
 			}
 		}
 
 		// @xxx
 		else if (part.type === TemplatePartType.Event) {
-			if (location.type === TemplatePartLocationType.Name) {
+			if (piece.type === TemplatePartPieceType.Name) {
 				let component = this.analyzer.getComponentByTagName(part.node.tagName!, template)
 				let event = component ? this.analyzer.getComponentEvent(component, part.mainName!) : undefined
-				return this.makeDefinitionInfo(event, part, location)
+				return this.makeDefinitionInfo(event, part, piece)
 			}
 		}
 
 		return undefined
 	}
 	
-	private getBindingDefinition(part: TemplatePart, location: TemplatePartLocation, template: Template) {
+	private getBindingDefinition(part: TemplatePart, piece: TemplatePartPiece, template: Template) {
 		let attr = part.attr!
 		let mainName = part.mainName!
 
 		// `:name|`, complete binding name.
-		if (location.type === TemplatePartLocationType.Name) {
+		if (piece.type === TemplatePartPieceType.Name) {
 			let binding = this.analyzer.getBindingByName(mainName, template)
 			return binding
 		}
 		
 		// If `:slot="|"`.
-		else if (location.type === TemplatePartLocationType.Modifier) {
+		else if (piece.type === TemplatePartPieceType.Modifier) {
 			if (mainName === 'slot') {
 				let attrValue = attr.value!
 				let component = this.analyzer.getComponentByTagName(part.node.tagName!, template)
@@ -77,14 +77,14 @@ export class LuposDefinition {
 		return undefined
 	}
 
-	private makeDefinitionInfo(item: LuposItem | undefined, part: TemplatePart, location: TemplatePartLocation): TS.DefinitionInfoAndBoundSpan | undefined{
+	private makeDefinitionInfo(item: LuposItem | undefined, part: TemplatePart, piece: TemplatePartPiece): TS.DefinitionInfoAndBoundSpan | undefined{
 		if (!item) {
 			return undefined
 		}
 
 		let nameNode = item.nameNode
 		let name = item.name
-		let kind = getScriptElementKind(item, part, location)
+		let kind = getScriptElementKind(item, part, piece)
 		let fileName = nameNode.getSourceFile().fileName
 
 		let textSpan: TS.TextSpan = {
@@ -102,10 +102,10 @@ export class LuposDefinition {
 		}
 
 		// Not include modifiers.
-		let length = location.end - location.start
+		let length = piece.end - piece.start
 
 		let fromTextSpan = {
-			start: location.start,
+			start: piece.start,
 			length,
 		}
 

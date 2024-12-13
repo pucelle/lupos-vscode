@@ -2,7 +2,7 @@ import type * as TS from 'typescript'
 import {WorkSpaceAnalyzer} from './analyzer'
 import {getScriptElementKind, getSymbolDisplayPartKind} from './utils'
 import {DOMBooleanAttributes, DOMElementEvents, DOMStyleProperties, CompletionItem} from '../complete-data'
-import {TemplatePart, TemplatePartLocation, TemplatePartLocationType, isSimulatedEventName, TemplatePartType, TemplateSlotPlaceholder, LuposBindingModifiers, LuposComponentAttributes, LuposDOMEventModifiers, LuposDOMEventCategories, LuposSimulatedEvents,} from '../lupos-ts-module'
+import {TemplatePart, TemplatePartPiece, TemplatePartPieceType, isSimulatedEventName, TemplatePartType, TemplateSlotPlaceholder, LuposBindingModifiers, LuposComponentAttributes, LuposDOMEventModifiers, LuposDOMEventCategories, LuposSimulatedEvents,} from '../lupos-ts-module'
 import {Template} from '../template-service'
 import {ProjectContext} from '../core'
 
@@ -24,82 +24,82 @@ export class LuposQuickInfo {
 	}
 	
 	/** `offset` is the local offset relative to part start. */
-	getQuickInfo(part: TemplatePart, location: TemplatePartLocation, template: Template): TS.QuickInfo | undefined {
+	getQuickInfo(part: TemplatePart, piece: TemplatePartPiece, template: Template): TS.QuickInfo | undefined {
 
 		// `<A`
 		if (part.type === TemplatePartType.Component) {
 			let component = this.analyzer.getComponentByTagName(part.node.tagName!, template)
-			return this.makeQuickInfo(component, part, location)
+			return this.makeQuickInfo(component, part, piece)
 		}
 
 		// :xxx
 		else if (part.type === TemplatePartType.Binding) {
-			let item = this.getBindingQuickInfo(part, location, template)
-			return this.makeQuickInfo(item, part, location)
+			let item = this.getBindingQuickInfo(part, piece, template)
+			return this.makeQuickInfo(item, part, piece)
 		}
 
 		// .xxx
 		else if (part.type === TemplatePartType.Property) {
-			if (location.type === TemplatePartLocationType.Name) {
+			if (piece.type === TemplatePartPieceType.Name) {
 				let component = this.analyzer.getComponentByTagName(part.node.tagName!, template)
 				let property = component ? this.analyzer.getComponentProperty(component, part.mainName!) : undefined
 
-				return this.makeQuickInfo(property, part, location)
+				return this.makeQuickInfo(property, part, piece)
 			}
 		}
 
 		// ?xxx
 		else if (part.type === TemplatePartType.QueryAttribute) {
 			let property = findBooleanAttributeQuickInfo(part.mainName!, part.node.tagName!)
-			return this.makeQuickInfo(property, part, location)
+			return this.makeQuickInfo(property, part, piece)
 		}
 
 		// @xxx
 		else if (part.type === TemplatePartType.Event) {
-			let event = this.getEventQuickInfo(part, location, template)
-			return this.makeQuickInfo(event, part, location)
+			let event = this.getEventQuickInfo(part, piece, template)
+			return this.makeQuickInfo(event, part, piece)
 		}
 
 		// `tagName="xxx"`
 		else if (part.type === TemplatePartType.UnSlottedAttribute
 			&& TemplateSlotPlaceholder.isComponent(part.node.tagName!)
-			&& location.type === TemplatePartLocationType.Name
+			&& piece.type === TemplatePartPieceType.Name
 		) {
 			let info = LuposComponentAttributes.find(item => item.name === part.mainName)
 			if (info) {
-				return this.makeQuickInfo(info, part, location)
+				return this.makeQuickInfo(info, part, piece)
 			}
 		}
 
 		return undefined
 	}
 	
-	private getBindingQuickInfo(part: TemplatePart, location: TemplatePartLocation, template: Template) {
+	private getBindingQuickInfo(part: TemplatePart, piece: TemplatePartPiece, template: Template) {
 		let mainName = part.mainName!
 
 		// `:name|`, quick info of binding name.
-		if (location.type === TemplatePartLocationType.Name) {
+		if (piece.type === TemplatePartPieceType.Name) {
 			let binding = this.analyzer.getBindingByName(mainName, template)
 			return binding
 		}
 
 		// `:ref.|`, quick info of modifiers.
-		else if (location.type === TemplatePartLocationType.Modifier) {
-			return this.getBindingModifierQuickInfo(part, location)
+		else if (piece.type === TemplatePartPieceType.Modifier) {
+			return this.getBindingModifierQuickInfo(part, piece)
 		}
 
 		// `:slot="|"`.
-		else if (location.type === TemplatePartLocationType.AttrValue) {
+		else if (piece.type === TemplatePartPieceType.AttrValue) {
 			return this.getBindingAttrValueQuickInfo(part, template)
 		}
 
 		return undefined
 	}
 
-	private getBindingModifierQuickInfo(part: TemplatePart, location: TemplatePartLocation) {
+	private getBindingModifierQuickInfo(part: TemplatePart, piece: TemplatePartPiece) {
 		let modifiers = part.modifiers!
 		let mainName = part.mainName!
-		let modifierIndex = location.modifierIndex!
+		let modifierIndex = piece.modifierIndex!
 		let modifierValue = modifiers[modifierIndex]
 
 		// `:style`
@@ -144,7 +144,7 @@ export class LuposQuickInfo {
 		return undefined
 	}
 
-	private getEventQuickInfo(part: TemplatePart, location: TemplatePartLocation, template: Template) {
+	private getEventQuickInfo(part: TemplatePart, piece: TemplatePartPiece, template: Template) {
 		let mainName = part.mainName!
 		let tagName = part.node.tagName!
 		let isComponent = TemplateSlotPlaceholder.isComponent(tagName)
@@ -153,7 +153,7 @@ export class LuposQuickInfo {
 		let componentEvents = component ? this.analyzer.getComponentEventsForCompletion(component, mainName) : null
 
 		// `@cli|`, find quick info of event name.
-		if (location.type === TemplatePartLocationType.Name) {
+		if (piece.type === TemplatePartPieceType.Name) {
 			if (isSimulatedEvent) {
 				return findQuickInfoItem(LuposSimulatedEvents, mainName)
 			}
@@ -166,7 +166,7 @@ export class LuposQuickInfo {
 		}
 
 		// `@click.`, find quick info of modifiers.
-		else if (location.type === TemplatePartLocationType.Modifier) {
+		else if (piece.type === TemplatePartPieceType.Modifier) {
 
 			// `@keydown.Enter`, `@click.left`.
 			if (LuposDOMEventCategories[mainName]) {
@@ -178,12 +178,12 @@ export class LuposQuickInfo {
 		return undefined
 	}
 
-	private makeQuickInfo(item: QuickInfoItem | undefined, part: TemplatePart, location: TemplatePartLocation): TS.QuickInfo | undefined{
+	private makeQuickInfo(item: QuickInfoItem | undefined, part: TemplatePart, piece: TemplatePartPiece): TS.QuickInfo | undefined{
 		if (!item || (!item.type && !item.description)) {
 			return undefined
 		}
 
-		let kind = getScriptElementKind(item, part, location)
+		let kind = getScriptElementKind(item, part, piece)
 
 		let textSpan: TS.TextSpan = {
 			start: part.start,
@@ -193,7 +193,7 @@ export class LuposQuickInfo {
 		let headers: TS.SymbolDisplayPart[] = []
 		let documentation: TS.SymbolDisplayPart[] = []
 
-		let headerText = location.type === TemplatePartLocationType.TagName
+		let headerText = piece.type === TemplatePartPieceType.TagName
 			? part.node.tagName!
 			: (part.namePrefix || '') + part.mainName!
 
@@ -205,7 +205,7 @@ export class LuposQuickInfo {
 		}
 
 		headers.push({
-			kind: this.context.helper.ts.SymbolDisplayPartKind[getSymbolDisplayPartKind(part, location)],
+			kind: this.context.helper.ts.SymbolDisplayPartKind[getSymbolDisplayPartKind(part, piece)],
 			text: headerText,
 		})
 

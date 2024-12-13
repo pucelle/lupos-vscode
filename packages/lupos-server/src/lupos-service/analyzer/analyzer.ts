@@ -46,7 +46,7 @@ export class WorkSpaceAnalyzer extends Analyzer {
 		}
 
 		if (changedFiles.size > 0) {
-			Logger.log(`Analyzed ${changedFiles.size} files`)
+			Logger.log(`Analyzed ${changedFiles.size} files, now have ${[...this.components].length} components, ${[...this.bindings].length} bindings.`)
 		}
 
 		await Promise.resolve()

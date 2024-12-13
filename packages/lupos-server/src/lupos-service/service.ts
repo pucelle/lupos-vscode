@@ -5,7 +5,7 @@ import {LuposQuickInfo} from './quickinfo'
 import {LuposDefinition} from './definition'
 import {ProjectContext} from '../core'
 import {Template} from '../template-service'
-import {DiagnosticModifier, getTemplatePartLocationAt, TemplateDiagnostics} from '../lupos-ts-module'
+import {DiagnosticModifier, getTemplatePartPieceAt, TemplateDiagnostics} from '../lupos-ts-module'
 
 
 /** Provide lupos language service for a single. */
@@ -39,14 +39,14 @@ export class LuposService {
 			return undefined
 		}
 
-		let location = getTemplatePartLocationAt(part, temOffset)
-		if (!location) {
+		let piece = getTemplatePartPieceAt(part, temOffset)
+		if (!piece) {
 			return undefined
 		}
 
 		this.beFresh()
 
-		return this.completion.getCompletions(part, location, template)
+		return this.completion.getCompletions(part, piece, template)
 	}
 
 	getQuickInfo(template: Template, temOffset: number): TS.QuickInfo | undefined {
@@ -55,14 +55,14 @@ export class LuposService {
 			return undefined
 		}
 
-		let location = getTemplatePartLocationAt(part, temOffset)
-		if (!location) {
+		let piece = getTemplatePartPieceAt(part, temOffset)
+		if (!piece) {
 			return undefined
 		}
 
 		this.beFresh()
 		
-		return this.quickInfo.getQuickInfo(part, location, template)
+		return this.quickInfo.getQuickInfo(part, piece, template)
 	}
 
 	getDefinition(template: Template, temOffset: number): TS.DefinitionInfoAndBoundSpan | undefined {
@@ -71,14 +71,14 @@ export class LuposService {
 			return undefined
 		}
 
-		let location = getTemplatePartLocationAt(part, temOffset)
-		if (!location) {
+		let piece = getTemplatePartPieceAt(part, temOffset)
+		if (!piece) {
 			return undefined
 		}
 
 		this.beFresh()
 		
-		return this.definition.getDefinition(part, location, template)
+		return this.definition.getDefinition(part, piece, template)
 	}
 
 	modifyDiagnostics(template: Template, modifier: DiagnosticModifier) {

@@ -1,9 +1,6 @@
-**/.vscode
-.vscode-test
-test/
-packages/
-node_modules/typescript-flit/out/data/types.js
-**/*.map
-**/*.ts
-**/tsconfig.json
-**/tslint.json
+*.vsix
+images/!(logo.png)
+node_modules/@types
+node_modules/fs-extra
+node_modules/typescript
+node_modules/**/!(*.js|LICENSE|LICENSE.txt|LICENSE.md|package.json)

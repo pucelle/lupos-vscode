@@ -1,6 +1,6 @@
 import type * as TS from 'typescript'
 import {getScriptElementKind} from './utils'
-import {TemplatePart, TemplatePartType, TemplateSlotPlaceholder, TemplatePartLocation, TemplatePartLocationType, LuposControlFlowTags, LuposBindingModifiers, LuposSimulatedEvents, LuposDOMEventModifiers, LuposDOMEventCategories, LuposComponentAttributes, getBindingModifierCompletionItems, findCompletionDataItem} from '../lupos-ts-module'
+import {TemplatePart, TemplatePartType, TemplateSlotPlaceholder, TemplatePartPiece, TemplatePartPieceType, LuposControlFlowTags, LuposBindingModifiers, LuposSimulatedEvents, LuposDOMEventModifiers, LuposDOMEventCategories, LuposComponentAttributes, getBindingModifierCompletionItems, findCompletionDataItem} from '../lupos-ts-module'
 import {ProjectContext, ts} from '../core'
 import {WorkSpaceAnalyzer} from './analyzer'
 import {filterCompletionItems, DOMStyleProperties, DOMElementEvents, filterBooleanAttributeCompletionItems, filterDOMElementCompletionItems, CompletionItem, assignCompletionItems} from '../complete-data'
@@ -18,7 +18,7 @@ export class LuposCompletion {
 		this.context = analyzer.context
 	}
 
-	getCompletions(part: TemplatePart, location: TemplatePartLocation, template: Template): TS.CompletionInfo | undefined {
+	getCompletions(part: TemplatePart, piece: TemplatePartPiece, template: Template): TS.CompletionInfo | undefined {
 
 		// `<a`, `<`, `<A`, `<lu:`
 		if (part.type === TemplatePartType.Component
@@ -30,57 +30,57 @@ export class LuposCompletion {
 			let components = this.analyzer.getComponentsForCompletion(part.node.tagName || '')
 			let flowControlItems = filterCompletionItems(LuposControlFlowTags, part.node.tagName || '')
 
-			return this.makeCompletionInfo([...components, ...flowControlItems], part, location)
+			return this.makeCompletionInfo([...components, ...flowControlItems], part, piece)
 		}
 
 		// `:binding`, `?:binding`
 		// VSCode has a bug here: input unique `:` cause no completion action.
 		else if (part.type === TemplatePartType.Binding) {
-			let items = this.getBindingCompletionItems(part, location, template)
-			return this.makeCompletionInfo(items, part, location)
+			let items = this.getBindingCompletionItems(part, piece, template)
+			return this.makeCompletionInfo(items, part, piece)
 		}
 
 		// `?xxx`
 		else if (part.type === TemplatePartType.QueryAttribute) {
-			let items = this.getQueryAttributeCompletionItems(part, location)
-			return this.makeCompletionInfo(items, part, location)
+			let items = this.getQueryAttributeCompletionItems(part, piece)
+			return this.makeCompletionInfo(items, part, piece)
 		}
 
 		// `.xxx`
 		else if (part.type === TemplatePartType.Property) {
-			let items = this.getPropertyCompletionInfo(part, location, template)
-			return this.makeCompletionInfo(items, part, location)
+			let items = this.getPropertyCompletionInfo(part, piece, template)
+			return this.makeCompletionInfo(items, part, piece)
 		}
 
 		// `@xxx` or `@@xxx`
 		else if (part.type === TemplatePartType.Event) {
-			let items = this.getEventCompletionItems(part, location, template)
-			return this.makeCompletionInfo(items, part, location)
+			let items = this.getEventCompletionItems(part, piece, template)
+			return this.makeCompletionInfo(items, part, piece)
 		}
 
 		// `tagName="xxx"`
 		else if ((part.type === TemplatePartType.UnSlottedAttribute || part.type === TemplatePartType.SlottedAttribute)
 			&& TemplateSlotPlaceholder.isComponent(part.node.tagName!)
 		) {
-			if (location.type === TemplatePartLocationType.Name) {
+			if (piece.type === TemplatePartPieceType.Name) {
 				let items = filterCompletionItems(LuposComponentAttributes, part.mainName!)
-				return this.makeCompletionInfo(items, part, location)
+				return this.makeCompletionInfo(items, part, piece)
 			}
-			else if (location.type === TemplatePartLocationType.AttrValue && part.mainName === 'tagName') {
+			else if (piece.type === TemplatePartPieceType.AttrValue && part.mainName === 'tagName') {
 				let items = filterDOMElementCompletionItems(part.attr!.value!)
-				return this.makeCompletionInfo(items, part, location)
+				return this.makeCompletionInfo(items, part, piece)
 			}
 		}
 
 		return undefined
 	}
 
-	private getBindingCompletionItems(part: TemplatePart, location: TemplatePartLocation, template: Template) {
+	private getBindingCompletionItems(part: TemplatePart, piece: TemplatePartPiece, template: Template) {
 		let mainName = part.mainName!
 		let items: CompletionItem[] = []
 
 		// `:name|`, complete binding name.
-		if (location.type === TemplatePartLocationType.Name) {
+		if (piece.type === TemplatePartPieceType.Name) {
 			let bindingItems = this.analyzer.getBindingsForCompletion(mainName)
 
 			// `:|` - complete from here
@@ -88,12 +88,12 @@ export class LuposCompletion {
 		}
 
 		// `:ref.|`, complete modifiers.
-		else if (location.type === TemplatePartLocationType.Modifier) {
-			items.push(...this.getBindingModifierCompletionItems(part, location, template))
+		else if (piece.type === TemplatePartPieceType.Modifier) {
+			items.push(...this.getBindingModifierCompletionItems(part, piece, template))
 		}
 
 		// `:slot="|"`.
-		else if (location.type === TemplatePartLocationType.AttrValue) {
+		else if (piece.type === TemplatePartPieceType.AttrValue) {
 			items.push(...this.getBindingAttrValueCompletionItems(part, template))
 		}
 
@@ -102,11 +102,11 @@ export class LuposCompletion {
 		return items
 	}
 
-	private getBindingModifierCompletionItems(part: TemplatePart, location: TemplatePartLocation, template: Template) {
+	private getBindingModifierCompletionItems(part: TemplatePart, piece: TemplatePartPiece, template: Template) {
 		let modifiers = part.modifiers!
 		let mainName = part.mainName!
 		let items: CompletionItem[] = []
-		let modifierIndex = location.modifierIndex!
+		let modifierIndex = piece.modifierIndex!
 		let modifierValue = modifiers[modifierIndex]
 
 		// `:style`
@@ -178,10 +178,10 @@ export class LuposCompletion {
 		return items
 	}
 
-	private getQueryAttributeCompletionItems(part: TemplatePart, location: TemplatePartLocation) {
+	private getQueryAttributeCompletionItems(part: TemplatePart, piece: TemplatePartPiece) {
 		let items: CompletionItem[] = []
 
-		if (location.type === TemplatePartLocationType.Name) {
+		if (piece.type === TemplatePartPieceType.Name) {
 			let properties = filterBooleanAttributeCompletionItems(part.mainName!, part.node.tagName!)
 			items.push(...properties)
 		}
@@ -189,20 +189,20 @@ export class LuposCompletion {
 		return items
 	}
 
-	private getPropertyCompletionInfo(part: TemplatePart, location: TemplatePartLocation, template: Template) {
+	private getPropertyCompletionInfo(part: TemplatePart, piece: TemplatePartPiece, template: Template) {
 		let attr = part.attr!
 		let mainName = part.mainName!
 		let items: CompletionItem[] = []
 		
 		// `.|property|`, complete property name.
-		if (location.type === TemplatePartLocationType.Name) {
+		if (piece.type === TemplatePartPieceType.Name) {
 			let component = this.analyzer.getComponentByTagName(part.node.tagName!, template)
 			let properties = component ? this.analyzer.getComponentPropertiesForCompletion(component, mainName) : []
 			items.push(...properties)
 		}
 
 		// `.property="|"`, complete property value.
-		else if (location.type === TemplatePartLocationType.AttrValue) {
+		else if (piece.type === TemplatePartPieceType.AttrValue) {
 			let attrValue = attr.value!
 
 			// For `<Icon .type="|">`
@@ -233,7 +233,7 @@ export class LuposCompletion {
 		return items
 	}
 	
-	private getEventCompletionItems(part: TemplatePart, location: TemplatePartLocation, template: Template) {
+	private getEventCompletionItems(part: TemplatePart, piece: TemplatePartPiece, template: Template) {
 		let modifiers = part.modifiers!
 		let mainName = part.mainName!
 		let tagName = part.node.tagName!
@@ -245,7 +245,7 @@ export class LuposCompletion {
 		let domItems = assignCompletionItems(domEvents, {kind: ts.ScriptElementKind.enumElement})
 
 		// `@cli|`, complete event name.
-		if (location.type === TemplatePartLocationType.Name) {
+		if (piece.type === TemplatePartPieceType.Name) {
 			let comEvents = component ? this.analyzer.getComponentEventsForCompletion(component!, mainName) : []
 			let comItems = assignCompletionItems(comEvents, {order: -1})
 
@@ -258,8 +258,8 @@ export class LuposCompletion {
 		}
 
 		// `@click.`, complete modifiers.
-		else if (location.type === TemplatePartLocationType.Modifier && fullyMatchedDomEvent) {
-			let modifierIndex = location.modifierIndex!
+		else if (piece.type === TemplatePartPieceType.Modifier && fullyMatchedDomEvent) {
+			let modifierIndex = piece.modifierIndex!
 			let modifierValue = modifiers[modifierIndex]
 
 			// `.passive`, `.stop`, ...
@@ -282,7 +282,7 @@ export class LuposCompletion {
 	private makeCompletionInfo(
 		items: CompletionItem[] | undefined,
 		part: TemplatePart,
-		location: TemplatePartLocation
+		piece: TemplatePartPiece
 	): TS.CompletionInfo | undefined {
 		if (!items) {
 			return undefined
@@ -291,9 +291,9 @@ export class LuposCompletion {
 		let names: Set<string> = new Set()
 
 		let entries: TS.CompletionEntry[] = items.map(item => {
-			let kind = getScriptElementKind(item, part, location)
-			let start = item.start ?? location.start
-			let end = item.end ?? location.end
+			let kind = getScriptElementKind(item, part, piece)
+			let start = item.start ?? piece.start
+			let end = item.end ?? piece.end
 
 			let replacementSpan: TS.TextSpan = {
 				start,

@@ -88,4 +88,4 @@ For Component Class, it provides:
 
 # More About
 
-This plugin is inspired by <https://github.com/mjbvz/vscode-lit-html>, and <https://github.com/runem/lit-analyzer>.
+This plugin was inspired by <https://github.com/mjbvz/vscode-lit-html>, and <https://github.com/runem/lit-analyzer>.

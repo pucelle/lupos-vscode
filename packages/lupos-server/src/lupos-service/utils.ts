@@ -1,13 +1,13 @@
 import {CompletionItem} from '../complete-data'
 import {ts} from '../core'
-import {TemplatePart, TemplatePartLocation, TemplatePartLocationType, TemplatePartType, TemplateSlotPlaceholder} from '../lupos-ts-module'
+import {TemplatePart, TemplatePartPiece, TemplatePartPieceType, TemplatePartType, TemplateSlotPlaceholder} from '../lupos-ts-module'
 import type * as TS from 'typescript'
 
 
 export function getScriptElementKind(
 	item: CompletionItem,
 	part: TemplatePart | undefined,
-	location: TemplatePartLocation
+	piece: TemplatePartPiece
 ): TS.ScriptElementKind {
 	if (!part) {
 		return ts.ScriptElementKind.classElement
@@ -41,7 +41,7 @@ export function getScriptElementKind(
 			return ts.ScriptElementKind.string
 		
 		case TemplatePartType.Binding:
-			if (location.type === TemplatePartLocationType.Name) {
+			if (piece.type === TemplatePartPieceType.Name) {
 				return ts.ScriptElementKind.classElement
 			}
 			else {
@@ -49,7 +49,7 @@ export function getScriptElementKind(
 			}
 		
 		case TemplatePartType.Property:
-			if (location.type === TemplatePartLocationType.Name) {
+			if (piece.type === TemplatePartPieceType.Name) {
 				return ts.ScriptElementKind.memberVariableElement
 			}
 			else {
@@ -57,7 +57,7 @@ export function getScriptElementKind(
 			}
 
 		case TemplatePartType.Event:
-			if (location.type === TemplatePartLocationType.Name) {
+			if (piece.type === TemplatePartPieceType.Name) {
 				return ts.ScriptElementKind.functionElement
 			}
 			else {
@@ -67,7 +67,7 @@ export function getScriptElementKind(
 		case TemplatePartType.SlottedAttribute:
 		case TemplatePartType.UnSlottedAttribute:
 		case TemplatePartType.QueryAttribute:
-			if (location.type === TemplatePartLocationType.Name) {
+			if (piece.type === TemplatePartPieceType.Name) {
 				return ts.ScriptElementKind.memberVariableElement
 			}
 			else {
@@ -80,7 +80,7 @@ export function getScriptElementKind(
 }
 
 
-export function getSymbolDisplayPartKind(part: TemplatePart, location: TemplatePartLocation): TS.SymbolDisplayPartKind {
+export function getSymbolDisplayPartKind(part: TemplatePart, piece: TemplatePartPiece): TS.SymbolDisplayPartKind {
 	switch (part.type) {
 		case TemplatePartType.Component:
 		case TemplatePartType.DynamicComponent:
@@ -92,7 +92,7 @@ export function getSymbolDisplayPartKind(part: TemplatePart, location: TemplateP
 			return ts.SymbolDisplayPartKind.text
 	
 		case TemplatePartType.Binding:
-			if (location.type === TemplatePartLocationType.Name) {
+			if (piece.type === TemplatePartPieceType.Name) {
 				return ts.SymbolDisplayPartKind.className
 			}
 			else {
@@ -100,7 +100,7 @@ export function getSymbolDisplayPartKind(part: TemplatePart, location: TemplateP
 			}
 
 		case TemplatePartType.Property:
-			if (location.type === TemplatePartLocationType.Name) {
+			if (piece.type === TemplatePartPieceType.Name) {
 				return ts.SymbolDisplayPartKind.propertyName
 			}
 			else {
@@ -110,7 +110,7 @@ export function getSymbolDisplayPartKind(part: TemplatePart, location: TemplateP
 		case TemplatePartType.Event:
 			
 			// DOM element event will be overwritten outside.
-			if (location.type === TemplatePartLocationType.Name) {
+			if (piece.type === TemplatePartPieceType.Name) {
 				return ts.SymbolDisplayPartKind.functionName
 			}
 			else {
@@ -120,7 +120,7 @@ export function getSymbolDisplayPartKind(part: TemplatePart, location: TemplateP
 		case TemplatePartType.SlottedAttribute:
 		case TemplatePartType.UnSlottedAttribute:
 		case TemplatePartType.QueryAttribute:
-			if (location.type === TemplatePartLocationType.Name) {
+			if (piece.type === TemplatePartPieceType.Name) {
 				return ts.SymbolDisplayPartKind.propertyName
 			}
 			else {
