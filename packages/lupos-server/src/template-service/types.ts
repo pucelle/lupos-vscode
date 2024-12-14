@@ -68,7 +68,7 @@ export interface TemplateLanguageService {
 		errorCodes: ReadonlyArray<number>,
 		formatOptions: TS.FormatCodeSettings,
 		preferences: TS.UserPreferences
-	): Array<TS.CodeFixAction>
+	): TS.CodeFixAction[]
 
 	getSignatureHelpItemsAtPosition?(
 		template: Template,

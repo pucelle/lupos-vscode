@@ -6,6 +6,7 @@ import {LuposDefinition} from './definition'
 import {ProjectContext} from '../core'
 import {Template} from '../template-service'
 import {DiagnosticModifier, getTemplatePartPieceAt, TemplateDiagnostics} from '../lupos-ts-module'
+import {LuposCodeFixes} from './code-fixes'
 
 
 /** Provide lupos language service for a single. */
@@ -18,6 +19,7 @@ export class LuposService {
 	private quickInfo: LuposQuickInfo
 	private definition: LuposDefinition
 	private diagnostics: TemplateDiagnostics
+	private codeFixes: LuposCodeFixes
 
 	constructor(context: ProjectContext) {
 		this.context = context
@@ -26,6 +28,7 @@ export class LuposService {
 		this.quickInfo = new LuposQuickInfo(this.analyzer)
 		this.definition = new LuposDefinition(this.analyzer)
 		this.diagnostics = new TemplateDiagnostics(this.analyzer)
+		this.codeFixes = new LuposCodeFixes(this.analyzer)
 	}
 
 	/** Make sure to reload changed source files. */
@@ -84,5 +87,21 @@ export class LuposService {
 	modifyDiagnostics(template: Template, modifier: DiagnosticModifier) {
 		this.beFresh()
 		this.diagnostics.diagnose(template.getAllParts(), template, modifier)
+	}
+
+	getCodeFixesAtPosition(template: Template, temOffset: number, errorCodes: ReadonlyArray<number>): TS.CodeFixAction[] | undefined {
+		let part = template.getPartAt(temOffset)
+		if (!part) {
+			return undefined
+		}
+
+		let piece = getTemplatePartPieceAt(part, temOffset)
+		if (!piece) {
+			return undefined
+		}
+
+		this.beFresh()
+
+		return this.codeFixes.getCodeFixes(part, piece, template, errorCodes)
 	}
 }

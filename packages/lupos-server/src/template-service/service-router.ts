@@ -148,6 +148,7 @@ export class TemplateServiceRouter implements TemplateLanguageService {
 		return ranges.map(range => VS2TSTranslator.translateOutliningSpanToTS(range, region))
 	}
 
+	/** Note diagnostics are located in global origin. */
 	modifySemanticDiagnostics(template: Template, modifier: DiagnosticModifier) {
 		let wholeRegion = template.embedded.getWholeTemplateRegion()
 		let regions = template.embedded.getAllRegions()
@@ -167,7 +168,7 @@ export class TemplateServiceRouter implements TemplateLanguageService {
 				}
 
 				for (let diag of tsDiags) {
-					modifier.add(diag)
+					modifier.addDiagnostic(diag)
 				}
 			}
 		}
@@ -211,14 +212,18 @@ export class TemplateServiceRouter implements TemplateLanguageService {
 		})
 	}
 
-
-	getCodeFixesAtPosition(template: Template, start: number, end: number): TS.CodeFixAction[] {
+	/** Note code fixes are located in global origin. */
+	getCodeFixesAtPosition(template: Template, start: number, end: number, errorCodes: ReadonlyArray<number>): TS.CodeFixAction[] {
 		let region = template.embedded.getWholeTemplateRegion()
 		let regStart = region.templateOffsetToLocal(start)
 		let regEnd = region.templateOffsetToLocal(end)
 		let regRange = VS2TSTranslator.makeVSRange(regStart, regEnd, region)
 
-		if (region.languageId === 'css') {
+		if (region.languageId === 'html') {
+			let luposCodeFixes = this.luposService.getCodeFixesAtPosition(template, regStart, errorCodes)
+			return luposCodeFixes || []
+		}
+		else if (region.languageId === 'css') {
 			let stylesheet = region.stylesheet!
 
 			let intersectedVSDiagnostics = SharedCSSService.doValidation(region.document, stylesheet)
@@ -235,7 +240,8 @@ export class TemplateServiceRouter implements TemplateLanguageService {
 			return VS2TSTranslator.translateVSCodeFixActionsToTS(
 				codeActions,
 				template.fileName,
-				region
+				region,
+				template
 			)
 		}
 

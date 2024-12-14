@@ -23,7 +23,6 @@ export class LuposQuickInfo {
 		this.context = analyzer.context
 	}
 	
-	/** `offset` is the local offset relative to part start. */
 	getQuickInfo(part: TemplatePart, piece: TemplatePartPiece, template: Template): TS.QuickInfo | undefined {
 
 		// `<A`

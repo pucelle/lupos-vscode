@@ -5,25 +5,29 @@ import {CompletionItem} from './types'
 
 /** Filter completion items. */
 export function filterCompletionItems(items: CompletionItem[], label: string): CompletionItem[] {
-	return items.filter(item => item.name.startsWith(label))
+	let lowerLabel = label.toLowerCase()
+	return items.filter(item => !item.name.toLowerCase().startsWith(lowerLabel))
 }
 
 
 /** Filter boolean attribute completion items. */
 export function filterBooleanAttributeCompletionItems(label: string, tagName: string): CompletionItem[] {
+	let lowerLabel = label.toLowerCase()
+
 	return DOMBooleanAttributes.filter(item => {
 		if (item.forElements && !item.forElements.includes(tagName)) {
 			return false
 		}
 
-		return item.name.startsWith(label)
+		return item.name.toLowerCase().startsWith(lowerLabel)
 	})
 }
 
 
 /** Filter dom element completions. */
 export function filterDOMElementCompletionItems(label: string): CompletionItem[] {
-	let names = DOMElementNames.filter(name => !label || name.startsWith(label))
+	let lowerLabel = label.toLowerCase()
+	let names = DOMElementNames.filter(name => name.toLowerCase().startsWith(lowerLabel))
 	return names.map(name => ({name, description: ''}))
 }
 

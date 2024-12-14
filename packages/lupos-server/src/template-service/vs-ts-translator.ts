@@ -48,7 +48,9 @@ export namespace VS2TSTranslator {
 		}
 	}
 
-	export function translateVSCodeFixActionsToTS(codeActions: vscode.Command[], fileName: string, origin: OriginTranslator): TS.CodeFixAction[] {
+
+	/** Will be translated to global. */
+	export function translateVSCodeFixActionsToTS(codeActions: vscode.Command[], fileName: string, origin: OriginTranslator, template: Template): TS.CodeFixAction[] {
 		let actions: TS.CodeFixAction[] = []
 
 		for (let vsAction of codeActions) {
@@ -61,7 +63,7 @@ export namespace VS2TSTranslator {
 				actions.push({
 					fixName: '',
 					description: vsAction.title,
-					changes: edits.map(edit => translateVSTextEditToTS(edit, fileName, origin)),
+					changes: edits.map(edit => translateVSTextEditToTS(edit, fileName, origin, template)),
 				})
 			}
 		}
@@ -69,9 +71,9 @@ export namespace VS2TSTranslator {
 		return actions
 	}
 
-	function translateVSTextEditToTS(textEdit: vscode.TextEdit, fileName: string, origin: OriginTranslator): TS.FileTextChanges {
-		let start = origin.localOffsetToTemplate(origin.localPositionToOffset(textEdit.range.start))
-		let end = origin.localOffsetToTemplate(origin.localPositionToOffset(textEdit.range.end))
+	function translateVSTextEditToTS(textEdit: vscode.TextEdit, fileName: string, origin: OriginTranslator, template: Template): TS.FileTextChanges {
+		let start = template.localOffsetToGlobal(origin.localPositionToOffset(textEdit.range.start))
+		let end = template.localOffsetToGlobal(origin.localPositionToOffset(textEdit.range.end))
 
 		return {
 			fileName: fileName,
@@ -263,6 +265,7 @@ export namespace VS2TSTranslator {
 	}
 
 
+	/** Will be translated to global. */
 	export function translateVSDiagnosticsToTS(
 		diagnostics: vscode.Diagnostic[],
 		sourceFile: TS.SourceFile,

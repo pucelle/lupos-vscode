@@ -85,15 +85,15 @@ export class TSLanguageServiceProxy {
 			return
 		}
 
-		this.wrap('getCompletionsAtPosition', (callOriginal, fileName: string, gloOffset: number, options) => {
-			let template = this.templateProvider.getTemplateAt(fileName, gloOffset)
+		this.wrap('getCompletionsAtPosition', (callOriginal, fileName: string, offsetGlo: number, options) => {
+			let template = this.templateProvider.getTemplateAt(fileName, offsetGlo)
 			if (!template) {
 				return callOriginal()
 			}
 
 			// Replace with lupos template completion.
 			if (this.templateService.getCompletionsAtPosition) {
-				let temOffset = template.globalOffsetToLocal(gloOffset)
+				let temOffset = template.globalOffsetToLocal(offsetGlo)
 				let info = this.templateService.getCompletionsAtPosition!(template, temOffset, options)
 
 				if (info) {
@@ -120,15 +120,15 @@ export class TSLanguageServiceProxy {
 			return
 		}
 
-		this.wrap('getCompletionEntryDetails', (callOriginal, fileName: string, gloOffset: number, name: string, options) => {
-			let template = this.templateProvider.getTemplateAt(fileName, gloOffset)
+		this.wrap('getCompletionEntryDetails', (callOriginal, fileName: string, offsetGlo: number, name: string, options) => {
+			let template = this.templateProvider.getTemplateAt(fileName, offsetGlo)
 			if (!template) {
 				return callOriginal()
 			}
 
 			// Replace with lupos template completion.
 			if (this.templateService.getCompletionEntryDetails) {
-				let temOffset = template.globalOffsetToLocal(gloOffset)
+				let temOffset = template.globalOffsetToLocal(offsetGlo)
 				let entry = this.templateService.getCompletionEntryDetails!(template, temOffset, name, options)
 
 				return entry
@@ -143,15 +143,15 @@ export class TSLanguageServiceProxy {
 			return
 		}
 
-		this.wrap('getQuickInfoAtPosition', (callOriginal, fileName: string, gloOffset: number) => {
-			let template = this.templateProvider.getTemplateAt(fileName, gloOffset)
+		this.wrap('getQuickInfoAtPosition', (callOriginal, fileName: string, offsetGlo: number) => {
+			let template = this.templateProvider.getTemplateAt(fileName, offsetGlo)
 			if (!template) {
 				return callOriginal()
 			}
 			
 			// Replace with lupos template completion.
 			if (this.templateService.getCompletionEntryDetails) {
-				let temOffset = template.globalOffsetToLocal(gloOffset)
+				let temOffset = template.globalOffsetToLocal(offsetGlo)
 				let info = this.templateService.getQuickInfoAtPosition!(template, temOffset)
 
 				if (info) {
@@ -170,14 +170,14 @@ export class TSLanguageServiceProxy {
 			return
 		}
 
-		this.wrap('getDefinitionAtPosition', (callOriginal, fileName: string, gloOffset: number) => {
-			let template = this.templateProvider.getTemplateAt(fileName, gloOffset)
+		this.wrap('getDefinitionAtPosition', (callOriginal, fileName: string, offsetGlo: number) => {
+			let template = this.templateProvider.getTemplateAt(fileName, offsetGlo)
 			if (!template) {
 				return callOriginal()
 			}
 
 			// Replace with template definitions.
-			let temOffset = template.globalOffsetToLocal(gloOffset)
+			let temOffset = template.globalOffsetToLocal(offsetGlo)
 			let definitions = this.templateService.getDefinitionAtPosition!(template, temOffset)
 
 			return definitions
@@ -189,14 +189,14 @@ export class TSLanguageServiceProxy {
 			return
 		}
 		
-		this.wrap('getDefinitionAndBoundSpan', (callOriginal, fileName: string, gloOffset: number) => {
-			let template = this.templateProvider.getTemplateAt(fileName, gloOffset)
+		this.wrap('getDefinitionAndBoundSpan', (callOriginal, fileName: string, offsetGlo: number) => {
+			let template = this.templateProvider.getTemplateAt(fileName, offsetGlo)
 			if (!template) {
 				return callOriginal()
 			}
 
 			// Replace with template definitions.
-			let temOffset = template.globalOffsetToLocal(gloOffset)
+			let temOffset = template.globalOffsetToLocal(offsetGlo)
 			let definitionAndSpan = this.templateService.getDefinitionAndBoundSpan!(template, temOffset)
 
 			return definitionAndSpan
@@ -284,26 +284,16 @@ export class TSLanguageServiceProxy {
 		}
 
 		this.wrap('getCodeFixesAtPosition', (callOriginal, fileName: string, startGlo: number, endGlo: number, errorCodes: ReadonlyArray<number>, options: TS.FormatCodeSettings, preferences: TS.UserPreferences) => {
-			let actions: TS.CodeFixAction[] = []
-
-			for (let template of this.templateProvider.getAllTemplates(fileName)) {
-				if (!template.intersectWith(startGlo, endGlo)) {
-					continue
-				}
-
-				let startTem = template.globalOffsetToLocal(startGlo)
-				let endTem = template.globalOffsetToLocal(endGlo)
-
-				for (let action of this.templateService.getCodeFixesAtPosition!(template, startTem, endTem, errorCodes, options, preferences)) {
-					action.changes.forEach(change => {
-						change.textChanges.forEach(change => {
-							this.translateTextSpan(change.span, template)
-						})
-					})
-
-					actions.push(action)
-				}
+			let template = this.templateProvider.getTemplateAt(fileName, startGlo)
+			if (!template) {
+				return callOriginal()
 			}
+
+			let startTem = template.globalOffsetToLocal(startGlo)
+			let endTem = template.globalOffsetToLocal(endGlo)
+
+			// Diagnostics are already in global origin, no need to translate.
+			let actions = this.templateService.getCodeFixesAtPosition!(template, startTem, endTem, errorCodes, options, preferences)
 
 			// Merge original code fixes with template ones.
 			return [
@@ -334,13 +324,13 @@ export class TSLanguageServiceProxy {
 			return
 		}
 
-		this.wrap('getSignatureHelpItems', (callOriginal, fileName: string, gloOffset: number, options?: TS.SignatureHelpItemsOptions) => {
-			let template = this.templateProvider.getTemplateAt(fileName, gloOffset)
+		this.wrap('getSignatureHelpItems', (callOriginal, fileName: string, offsetGlo: number, options?: TS.SignatureHelpItemsOptions) => {
+			let template = this.templateProvider.getTemplateAt(fileName, offsetGlo)
 			if (!template) {
 				return callOriginal()
 			}
 
-			let temOffset = template.globalOffsetToLocal(gloOffset)
+			let temOffset = template.globalOffsetToLocal(offsetGlo)
 			let items = this.templateService.getSignatureHelpItemsAtPosition!(template, temOffset, options)
 
 			if (items) {
@@ -379,13 +369,13 @@ export class TSLanguageServiceProxy {
 			return
 		}
 
-		this.wrap('findReferences', (callOriginal, fileName: string, gloOffset: number) => {
-			let context = this.templateProvider.getTemplateAt(fileName, gloOffset)
+		this.wrap('findReferences', (callOriginal, fileName: string, offsetGlo: number) => {
+			let context = this.templateProvider.getTemplateAt(fileName, offsetGlo)
 			if (!context) {
 				return callOriginal()
 			}
 
-			let temOffset = context.globalOffsetToLocal(gloOffset)
+			let temOffset = context.globalOffsetToLocal(offsetGlo)
 			let symbols = this.templateService.getReferencesAtPosition!(context, temOffset)
 
 			if (symbols) {
@@ -404,13 +394,13 @@ export class TSLanguageServiceProxy {
 			return
 		}
 
-		this.wrap('getJsxClosingTagAtPosition', (callOriginal, fileName: string, gloOffset: number) => {
-			let context = this.templateProvider.getTemplateAt(fileName, gloOffset)
+		this.wrap('getJsxClosingTagAtPosition', (callOriginal, fileName: string, offsetGlo: number) => {
+			let context = this.templateProvider.getTemplateAt(fileName, offsetGlo)
 			if (!context) {
 				return callOriginal()
 			}
 
-			let temOffset = context.globalOffsetToLocal(gloOffset)
+			let temOffset = context.globalOffsetToLocal(offsetGlo)
 			let info = this.templateService.getJsxClosingTagAtPosition!(context, temOffset)
 
 			// Replace original closing tag to template ones.
