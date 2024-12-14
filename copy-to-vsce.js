@@ -1,5 +1,6 @@
 // We copy files to package and publish because vsce package can't work with linked directory.
 
+const {strict} = require('assert')
 const fs = require('fs-extra')
 const path = require('path')
 
@@ -18,8 +19,13 @@ for (let fileOrFolderName of fileOrFolderNames) {
 	fs.copySync(fromDir + '/' + fileOrFolderName, toDir + '/' + fileOrFolderName, {dereference: true})
 }
 
+cleanPackageJSON(toDir)
+cleanPackageJSON(toDir + '/node_modules/lupos-server')
 
-let packageJson = fs.readJSONSync(toDir + '/package.json')
-delete packageJson.scripts
-delete packageJson.devDependencies
-fs.writeJSONSync(toDir + '/package.json', packageJson, {spaces: '\t'})
+
+function cleanPackageJSON(dir) {
+	let packageJson = fs.readJSONSync(dir + '/package.json')
+	delete packageJson.scripts
+	delete packageJson.devDependencies
+	fs.writeJSONSync(dir + '/package.json', packageJson, {spaces: '\t'})
+}

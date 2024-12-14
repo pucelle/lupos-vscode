@@ -1,16 +1,16 @@
 {
 	"name": "lupos-vscode",
-	"displayName": "VScode Lupos Plugin",
-	"description": "Syntax highlighting and IntelliSense for HTML & CSS Tagged Template of Lupos Framework",
+	"displayName": "VScode Lupos",
+	"description": "Syntax highlighting and IntelliSense for Tagged Template of 'lupos.js'",
 	"icon": "images/logo.png",
 	"version": "1.0.0",
 	"publisher": "pucelle",
 	"license": "MIT",
 	"repository": {
-		"url": "https://github.com/pucelle/lupos.vscode.git"
+		"url": "https://github.com/pucelle/lupos-vscode.git"
 	},
 	"bugs": {
-		"url": "https://github.com/pucelle/lupos.vscode/issues"
+		"url": "https://github.com/pucelle/lupos-vscode/issues"
 	},
 	"categories": [
 		"Programming Languages"
@@ -95,12 +95,6 @@
 		"copy-to-vsce": "node copy-to-vsce.js",
 		"vsce-package": "cd vsce && vsce package",
 		"vsce-publish": "cd vsce && vsce publish"
-	},
-	"dependencies": {
-		"vscode-css-languageservice": "^3.0.13",
-		"vscode-html-languageservice": "^2.1.12",
-		"vscode-languageserver-textdocument": "^1.0.1",
-		"vscode-languageserver-types": "^3.16.0"
 	},
 	"devDependencies": {
 		"@types/fs-extra": "^9.0.6",
