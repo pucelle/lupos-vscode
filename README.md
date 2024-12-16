@@ -30,6 +30,7 @@ If wanting to debug server part, please follow comments in `packages/lupos-serve
 - `>${...}<` slot content type checking, completion. Haven't find a way to do this.
 - `<lu:if ...>` can narrow variable types for it's content.
 - Type checking and relation between `data` and `renderer` of `<lu:for ${data}>${renderer}`.
+- Defined Transition names completion.
 - HTML Element `.property` Completion & Quick Info & Diagnostic.
 - Ensure `onCreated`, `onReady`, `onUpdated`, `onConnected`, `onWillDisconnect` call `super.onXXX()`.
 - Prevent writing operations inside `render`, `@watch`, `@computed`.
