@@ -125,7 +125,7 @@ export class LuposCodeFixes {
 				}
 			}
 
-			availablePath = availablePath.replace(/(?:\/index)?\.ts$/, '')
+			availablePath = availablePath.replace(/(?:\/index)?(?:\.d)?\.ts$/, '')
 
 			return availablePath
 		}
