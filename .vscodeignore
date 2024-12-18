@@ -1,7 +1,9 @@
 *.vsix
 images/!(logo.png)
 node_modules/.bin
-node_modules/@types
 node_modules/fs-extra
-node_modules/typescript
+node_modules/**/@types
+node_modules/**/typescript
+node_modules/lupos-server/node_modules/undici-types
 node_modules/**/!(*.js|LICENSE|LICENSE.txt|LICENSE.md|package.json)
+*.vsix

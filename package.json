@@ -55,8 +55,7 @@
 				"scopeName": "inline.lupos.css",
 				"path": "./syntaxes/lupos-css.json",
 				"embeddedLanguages": {
-					"meta.embedded.block.css": "scss",
-					"source.css.scss": "scss"
+					"meta.embedded.block.css": "css"
 				}
 			},
 			{

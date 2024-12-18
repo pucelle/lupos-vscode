@@ -4,8 +4,8 @@
 	"description": "TypeScript language service plugin for lupos",
 	"main": "out/index.js",
 	"dependencies": {
-		"vscode-css-languageservice": "^3.0.13",
-		"vscode-html-languageservice": "^2.1.12",
+		"vscode-css-languageservice": "^6.3.2",
+		"vscode-html-languageservice": "^5.3.1",
 		"vscode-languageserver-textdocument": "^1.0.1",
 		"vscode-languageserver-types": "^3.16.0"
 	},

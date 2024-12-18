@@ -8,3 +8,4 @@ node_modules
 .VsCodeCounter
 *.tsbuildinfo
 vsce
+package-lock.json
