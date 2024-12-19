@@ -8,24 +8,23 @@ import {Template} from './template'
 
 
 /** 
- * Reference to https://github.com/microsoft/typescript-styled-plugin/blob/master/src/_language-service.ts
+ * Reference to https://github.com/styled-components/typescript-styled-plugin/blob/master/src/_language-service.ts
  * It translate vscode service data items to typescript service data items.
  */
 export namespace VS2TSTranslator {
 
 	export function translateVSHoverToTS(hover: vscode.Hover, position: TS.LineAndCharacter, origin: OriginTranslator): TS.QuickInfo {
-		let header: TS.SymbolDisplayPart[] = []
-		let documentation: TS.SymbolDisplayPart[] = []
+		let contents: TS.SymbolDisplayPart[] = []
 
 		let convertPart = (hoverContents: typeof hover.contents) => {
 			if (typeof hoverContents === 'string') {
-				documentation.push({kind: 'unknown', text: hoverContents})
+				contents.push({kind: 'text', text: hoverContents})
 			}
 			else if (Array.isArray(hoverContents)) {
 				hoverContents.forEach(convertPart)
 			}
 			else {
-				header.push({kind: 'unknown', text: hoverContents.value})
+				contents.push({kind: 'text', text: hoverContents.value})
 			}
 		}
 
@@ -36,14 +35,14 @@ export namespace VS2TSTranslator {
 		let length = end - start
 
 		return {
-			kind: ts.ScriptElementKind.string,
+			kind: ts.ScriptElementKind.unknown,
 			kindModifiers: '',
 			textSpan: {
 				start,
 				length,
 			},
-			displayParts: header,
-			documentation,
+			displayParts: [],
+			documentation: contents,
 			tags: [],
 		}
 	}
@@ -161,9 +160,13 @@ export namespace VS2TSTranslator {
 	}
 
 
-	/** vscode snippet syntax `$1` not been supported in typescript. */
+	/** vscode snippet syntax `$1` or `${1:...} `${1|...}` not been supported in typescript. */
 	export function removeSnippetPlaceholders(label: string) {
-		return label.replace(/\$\d/g, '')
+		return label
+			.replace(/\$\{\d+:(\w+).*?\}/g, '$1')
+			.replace(/\$\{\d+\|(\w+),.*?\}/g, '$1')
+			.replace(/\$\{\d+\|.*?\}/g, '')
+			.replace(/\$\d/g, '')
 	}
 
 
