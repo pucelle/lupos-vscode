@@ -24,15 +24,6 @@ export class TemplateEmbeddedRegions {
 				return
 			}
 
-			if (node.tagName === 'style') {
-				this.regions.push(this.createRegion(
-					'css',
-					node.start,
-					node.end,
-					false
-				))
-			}
-
 			for (let attr of node.attrs!) {
 				if (attr.name === 'style' || attr.name === ':style') {
 					let start = attr.valueStart
