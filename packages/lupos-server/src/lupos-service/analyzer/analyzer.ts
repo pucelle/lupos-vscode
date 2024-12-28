@@ -3,6 +3,7 @@ import {analyzeLuposIcons, LuposIcon} from './icons'
 import {Logger, ProjectContext} from '../../core'
 import {LuposBinding, LuposComponent, LuposEvent, LuposProperty} from './types'
 import {Analyzer} from '../../lupos-ts-module'
+import {makeStartsMatchExp} from '../utils'
 
 
 export class WorkSpaceAnalyzer extends Analyzer {
@@ -95,9 +96,10 @@ export class WorkSpaceAnalyzer extends Analyzer {
 	 */
 	getComponentsForCompletion(label: string): LuposComponent[] {
 		let components: LuposComponent[] = []
+		let re = makeStartsMatchExp(label)
 
 		for (let component of this.components) {
-			if (!label || component.name.startsWith(label)) {
+			if (re.test(component.name)) {
 				components.push(component)
 			}
 		}
@@ -111,6 +113,7 @@ export class WorkSpaceAnalyzer extends Analyzer {
 	 */
 	getComponentPropertiesForCompletion(component: LuposComponent, label: string, mustBePublic: boolean = true): LuposProperty[] {
 		let properties: Map<string, LuposProperty> = new Map()
+		let re = makeStartsMatchExp(label)
 
 		for (let com of this.walkComponents(component)) {
 			for (let property of Object.values(com.properties)) {
@@ -122,7 +125,7 @@ export class WorkSpaceAnalyzer extends Analyzer {
 					continue
 				}
 				
-				if (label || property.name.startsWith(label)) {
+				if (re.test(property.name)) {
 					properties.set(property.name, property)
 				}
 			}
@@ -137,10 +140,11 @@ export class WorkSpaceAnalyzer extends Analyzer {
 	 */
 	getSubPropertiesForCompletion(component: LuposComponent, propertyName: 'slotElements', subPropertyNameLabel: string): LuposProperty[] {
 		let properties: Map<string, LuposProperty> = new Map()
+		let re = makeStartsMatchExp(subPropertyNameLabel)
 
 		for (let com of this.walkComponents(component)) {
 			for (let property of Object.values(com[propertyName])) {
-				if (property.name.startsWith(subPropertyNameLabel) && !properties.has(property.name)) {
+				if (re.test(property.name) && !properties.has(property.name)) {
 					properties.set(property.name, property)
 				}
 			}
@@ -156,6 +160,7 @@ export class WorkSpaceAnalyzer extends Analyzer {
 	 */
 	getComponentEventsForCompletion(component: LuposComponent, label: string): LuposEvent[] {
 		let events: Map<string, LuposEvent> = new Map()
+		let re = makeStartsMatchExp(label)
 
 		for (let com of this.walkComponents(component)) {
 			for (let event of Object.values(com.events)) {
@@ -163,7 +168,7 @@ export class WorkSpaceAnalyzer extends Analyzer {
 					continue
 				}
 
-				if (label || event.name.startsWith(label)) {
+				if (re.test(event.name)) {
 					events.set(event.name, event)
 				}
 			}
@@ -179,9 +184,10 @@ export class WorkSpaceAnalyzer extends Analyzer {
 	 */
 	getBindingsForCompletion(label: string): LuposBinding[] {
 		let bindings: LuposBinding[] = []
+		let re = makeStartsMatchExp(label)
 
 		for (let binding of this.bindings) {
-			if (!label || binding.name.startsWith(label)) {
+			if (re.test(binding.name)) {
 				bindings.push(binding)
 			}
 		}
@@ -197,6 +203,7 @@ export class WorkSpaceAnalyzer extends Analyzer {
 
 	/** Get a icon when it's defined file name matches label. */
 	getIconsForCompletion(label: string): LuposIcon[] {
-		return [...this.icons.values()].filter(icon => icon.name.startsWith(label))
+		let re = makeStartsMatchExp(label)
+		return [...this.icons.values()].filter(icon => re.test(icon.name))
 	}
 }

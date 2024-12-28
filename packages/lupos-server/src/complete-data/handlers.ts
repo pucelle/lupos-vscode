@@ -3,13 +3,6 @@ import {DOMElementNames} from './dom-elements'
 import {CompletionItem} from './types'
 
 
-/** Filter completion items. */
-export function filterCompletionItems(items: CompletionItem[], label: string): CompletionItem[] {
-	let lowerLabel = label.toLowerCase()
-	return items.filter(item => !item.name.toLowerCase().startsWith(lowerLabel))
-}
-
-
 /** Filter boolean attribute completion items. */
 export function filterBooleanAttributeCompletionItems(label: string, tagName: string): CompletionItem[] {
 	let lowerLabel = label.toLowerCase()
@@ -19,7 +12,7 @@ export function filterBooleanAttributeCompletionItems(label: string, tagName: st
 			return false
 		}
 
-		return item.name.toLowerCase().startsWith(lowerLabel)
+		return item.name.startsWith(lowerLabel)
 	})
 }
 
@@ -27,7 +20,7 @@ export function filterBooleanAttributeCompletionItems(label: string, tagName: st
 /** Filter dom element completions. */
 export function filterDOMElementCompletionItems(label: string): CompletionItem[] {
 	let lowerLabel = label.toLowerCase()
-	let names = DOMElementNames.filter(name => name.toLowerCase().startsWith(lowerLabel))
+	let names = DOMElementNames.filter(name => name.startsWith(lowerLabel))
 	return names.map(name => ({name, description: ''}))
 }
 

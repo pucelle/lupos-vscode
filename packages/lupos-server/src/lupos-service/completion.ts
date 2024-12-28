@@ -1,9 +1,9 @@
 import type * as TS from 'typescript'
 import {getScriptElementKind} from './utils'
-import {TemplatePart, TemplatePartType, TemplateSlotPlaceholder, TemplatePartPiece, TemplatePartPieceType, LuposControlFlowTags, LuposBindingModifiers, LuposSimulatedEvents, LuposDOMEventModifiers, LuposDOMEventCategories, LuposComponentAttributes, getBindingModifierCompletionItems, findCompletionDataItem} from '../lupos-ts-module'
+import {TemplatePart, TemplatePartType, TemplateSlotPlaceholder, TemplatePartPiece, TemplatePartPieceType, LuposControlFlowTags, LuposBindingModifiers, LuposSimulatedEvents, LuposDOMEventModifiers, LuposDOMEventCategories, LuposComponentAttributes, getBindingModifierCompletionItems, findCompletionDataItem, filterCompletionDataItems} from '../lupos-ts-module'
 import {ProjectContext, ts} from '../core'
 import {WorkSpaceAnalyzer} from './analyzer'
-import {filterCompletionItems, DOMStyleProperties, DOMElementEvents, filterBooleanAttributeCompletionItems, filterDOMElementCompletionItems, CompletionItem, assignCompletionItems} from '../complete-data'
+import {DOMStyleProperties, DOMElementEvents, filterBooleanAttributeCompletionItems, filterDOMElementCompletionItems, CompletionItem, assignCompletionItems} from '../complete-data'
 import {Template} from '../template-service'
 
 
@@ -28,7 +28,7 @@ export class LuposCompletion {
 			|| part.type === TemplatePartType.NormalStartTag
 		) {
 			let components = this.analyzer.getComponentsForCompletion(part.node.tagName || '')
-			let flowControlItems = filterCompletionItems(LuposControlFlowTags, part.node.tagName || '')
+			let flowControlItems = filterCompletionDataItems(LuposControlFlowTags, part.node.tagName || '')
 
 			return this.makeCompletionInfo([...components, ...flowControlItems], part, piece)
 		}
@@ -63,7 +63,7 @@ export class LuposCompletion {
 			&& TemplateSlotPlaceholder.isComponent(part.node.tagName!)
 		) {
 			if (piece.type === TemplatePartPieceType.Name) {
-				let items = filterCompletionItems(LuposComponentAttributes, part.mainName!)
+				let items = filterCompletionDataItems(LuposComponentAttributes, part.mainName!)
 				return this.makeCompletionInfo(items, part, piece)
 			}
 			else if (piece.type === TemplatePartPieceType.AttrValue && part.mainName === 'tagName') {
@@ -114,13 +114,13 @@ export class LuposCompletion {
 
 			// Complete style property.
 			if (modifierIndex === 0) {
-				let filtered = filterCompletionItems(DOMStyleProperties, modifierValue)
+				let filtered = filterCompletionDataItems(DOMStyleProperties, modifierValue)
 				items.push(...filtered)
 			}
 
 			// Complete style unit.
 			else if (modifierIndex === 1) {
-				let filtered = filterCompletionItems(LuposBindingModifiers.style, modifierValue)
+				let filtered = filterCompletionDataItems(LuposBindingModifiers.style, modifierValue)
 				items.push(...filtered)
 			}
 		}
@@ -151,7 +151,7 @@ export class LuposCompletion {
 
 			// Make normal modifier items.
 			let modifierItems = getBindingModifierCompletionItems(mainName, modifiers, availableModifiers)
-			let filtered = filterCompletionItems(modifierItems, modifierValue)
+			let filtered = filterCompletionDataItems(modifierItems, modifierValue)
 			items.push(...filtered)
 		}
 
@@ -240,7 +240,7 @@ export class LuposCompletion {
 		let items: CompletionItem[] = []
 		let isComponent = TemplateSlotPlaceholder.isComponent(tagName)
 		let component = isComponent ? this.analyzer.getComponentByTagName(tagName, template) : null
-		let domEvents = part.namePrefix === '@' ? filterCompletionItems(DOMElementEvents, mainName) : []
+		let domEvents = part.namePrefix === '@' ? filterCompletionDataItems(DOMElementEvents, mainName) : []
 		let fullyMatchedDomEvent = findCompletionDataItem(domEvents, mainName)
 		let domItems = assignCompletionItems(domEvents, {kind: ts.ScriptElementKind.enumElement})
 
@@ -249,7 +249,7 @@ export class LuposCompletion {
 			let comEvents = component ? this.analyzer.getComponentEventsForCompletion(component!, mainName) : []
 			let comItems = assignCompletionItems(comEvents, {order: -1})
 
-			let simEvents = part.namePrefix === '@' ? filterCompletionItems(LuposSimulatedEvents, mainName) : []
+			let simEvents = part.namePrefix === '@' ? filterCompletionDataItems(LuposSimulatedEvents, mainName) : []
 			let simItems = assignCompletionItems(simEvents, {order: 1, kind: ts.ScriptElementKind.enumMemberElement})
 
 			let eventItems = [...comItems, ...domItems, ...simItems]
@@ -263,7 +263,7 @@ export class LuposCompletion {
 			let modifierValue = modifiers[modifierIndex]
 
 			// `.passive`, `.stop`, ...
-			let globalItems = filterCompletionItems(LuposDOMEventModifiers.global, modifierValue)
+			let globalItems = filterCompletionDataItems(LuposDOMEventModifiers.global, modifierValue)
 			globalItems = globalItems.filter(item => !modifiers.includes(item.name))
 			items.push(...globalItems)
 
@@ -271,7 +271,7 @@ export class LuposCompletion {
 			// Not provide control keys completion.
 			if (LuposDOMEventCategories[mainName]) {
 				let category = LuposDOMEventCategories[mainName]
-				let categoryItems = filterCompletionItems(LuposDOMEventModifiers[category], modifierValue)
+				let categoryItems = filterCompletionDataItems(LuposDOMEventModifiers[category], modifierValue)
 				items.push(...categoryItems)
 			}
 		}
