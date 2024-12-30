@@ -87,9 +87,8 @@
 		]
 	},
 	"scripts": {
-		"build": "tsc -b && cd packages/lupos-server && npm run build",
-		"watch-client": "tsc -b -w",
-		"watch-server": "cd packages/lupos-server && npm run watch",
+		"build": "tsc -b",
+		"watch": "tsc -b -w",
 		"link": "mklink /j \"node_modules/lupos-server\" \"packages/lupos-server\"",
 		"copy-to-vsce": "node copy-to-vsce.js",
 		"vsce-package": "cd vsce && vsce package",

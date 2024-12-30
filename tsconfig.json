@@ -19,5 +19,8 @@
 		"node_modules",
 		"packages",
 		"out"
+	],
+	"references": [
+		{ "path": "./packages/lupos-server" },
 	]
 }
