@@ -1,6 +1,6 @@
 {
 	"scopeName": "inline.lupos.css",
-	"injectionSelector": "L:source.ts",
+	"injectionSelector": "L:source.ts -comment -(string -meta.embedded)",
 	"patterns": [
 		{
 			"name": "inline.lupos.css",
