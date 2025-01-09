@@ -350,10 +350,10 @@ export class TSLanguageServiceProxy {
 		this.wrap('getOutliningSpans', (callOriginal, fileName: string) => {
 			let spans: TS.OutliningSpan[] = []
 
-			for (let context of this.templateProvider.getAllTemplates(fileName)) {
-				for (let outliningSpan of this.templateService.getOutliningSpans!(context)) {
-					this.translateTextSpan(outliningSpan.textSpan, context)
-					this.translateTextSpan(outliningSpan.hintSpan, context)
+			for (let template of this.templateProvider.getAllTemplates(fileName)) {
+				for (let outliningSpan of this.templateService.getOutliningSpans!(template)) {
+					this.translateTextSpan(outliningSpan.textSpan, template)
+					this.translateTextSpan(outliningSpan.hintSpan, template)
 
 					spans.push(outliningSpan)
 				}
@@ -370,17 +370,33 @@ export class TSLanguageServiceProxy {
 		}
 
 		this.wrap('findReferences', (callOriginal, fileName: string, offsetGlo: number) => {
-			let context = this.templateProvider.getTemplateAt(fileName, offsetGlo)
-			if (!context) {
+			let template = this.templateProvider.getTemplateAt(fileName, offsetGlo)
+			if (!template) {
 				return callOriginal()
 			}
 
-			let temOffset = context.globalOffsetToLocal(offsetGlo)
-			let symbols = this.templateService.getReferencesAtPosition!(context, temOffset)
+			let temOffset = template.globalOffsetToLocal(offsetGlo)
+			let symbols = this.templateService.getReferencesAtPosition!(template, temOffset)
 
 			if (symbols) {
 				symbols.forEach(symbol => {
-					this.translateTextSpan(symbol.definition.textSpan, context!)
+					this.translateTextSpan(symbol.definition.textSpan, template!)
+
+					for (let ref of symbol.references) {
+						this.translateTextSpan(ref.textSpan, template!)
+
+						if (ref.contextSpan) {
+							this.translateTextSpan(ref.contextSpan, template!)
+						}
+
+						if (ref.originalTextSpan) {
+							this.translateTextSpan(ref.originalTextSpan, template!)
+						}
+
+						if (ref.originalContextSpan) {
+							this.translateTextSpan(ref.originalContextSpan, template!)
+						}
+					}
 				})
 			}
 

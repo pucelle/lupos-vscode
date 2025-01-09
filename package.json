@@ -87,6 +87,7 @@
 		]
 	},
 	"scripts": {
+		"vscode:prepublish": "npm run build",
 		"build": "tsc -b",
 		"watch": "tsc -b -w",
 		"link": "mklink /j \"node_modules/lupos-server\" \"packages/lupos-server\"",
