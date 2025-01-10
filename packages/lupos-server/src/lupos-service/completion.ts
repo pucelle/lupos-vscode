@@ -19,6 +19,11 @@ export class LuposCompletion {
 	}
 
 	getCompletions(part: TemplatePart, piece: TemplatePartPiece, template: Template): TS.CompletionInfo | undefined {
+		
+		// Print part
+		// let p = {...part} as any
+		// p.node = null
+		// Logger.log(p)
 
 		// `<a`, `<`, `<A`, `<lu:`
 		if (part.type === TemplatePartType.Component

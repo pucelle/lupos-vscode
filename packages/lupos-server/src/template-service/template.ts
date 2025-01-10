@@ -35,7 +35,7 @@ export class Template extends TemplateBasis implements OriginTranslator {
 		partsParser.parse()
 
 		// Print parts:
-		// if (this.content.includes('<AsyncLiveRepeat')) {
+		// if (this.content.includes('LG')) {
 		// 	Logger.log(this.content)
 
 		// 	for (let part of this.parts) {
