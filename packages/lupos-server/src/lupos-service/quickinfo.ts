@@ -184,9 +184,12 @@ export class LuposQuickInfo {
 
 		let kind = getScriptElementKind(item, part, piece)
 
+		// Extend to include identifier.
+		let start = piece.start - (part.namePrefix ? part.namePrefix.length : 0)
+
 		let textSpan: TS.TextSpan = {
-			start: piece.start - (part.namePrefix ? part.namePrefix.length : 0),
-			length: piece.end - piece.start,
+			start,
+			length: piece.end - start,
 		}
 
 		let headers: TS.SymbolDisplayPart[] = []
