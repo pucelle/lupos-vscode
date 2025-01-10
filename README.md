@@ -27,7 +27,6 @@ If wanting to debug server part, please follow comments in `packages/lupos-serve
 
 #### Not provided, but plan to
 
-- Fix parsing problem when using `\r\n` as line end.
 - `>${...}<` slot content type checking, completion. Haven't find a way to do this.
 - `<lu:if ...>` can narrow variable types for it's content.
 - Type checking and relation between `data` and `renderer` of `<lu:for ${data}>${renderer}`.
