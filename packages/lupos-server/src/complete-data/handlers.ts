@@ -30,8 +30,6 @@ export function assignCompletionItems(items: CompletionItem[], assignment: Parti
 	return items.map(item => ({
 		name: assignment.name ?? item.name,
 		description: assignment.description ?? item.description,
-		start: assignment.start ?? item.start,
-		end: assignment.end ?? item.end,
 		kind: assignment.kind ?? item.kind,
 		order: assignment.order ?? item.order,
 	}))

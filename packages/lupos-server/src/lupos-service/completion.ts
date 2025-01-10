@@ -297,8 +297,8 @@ export class LuposCompletion {
 
 		let entries: TS.CompletionEntry[] = items.map(item => {
 			let kind = getScriptElementKind(item, part, piece)
-			let start = item.start ?? piece.start
-			let end = item.end ?? piece.end
+			let start = piece.start + (part.namePrefix?.length ?? 0)
+			let end = piece.end
 
 			let replacementSpan: TS.TextSpan = {
 				start,
