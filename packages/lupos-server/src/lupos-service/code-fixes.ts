@@ -3,7 +3,7 @@ import {WorkSpaceAnalyzer} from './analyzer'
 import {DiagnosticCode, TemplatePart, TemplatePartPiece, TemplatePartPieceType, TemplatePartType} from '../lupos-ts-module'
 import {Template} from '../template-service'
 import {ProjectContext, ts} from '../core'
-import {pathJoin, pathRelative} from './utils'
+import * as path from 'node:path'
 
 
 /** Provide lupos code-fix service. */
@@ -98,7 +98,7 @@ export class LuposCodeFixes {
 			return targetFilePath.match(/^.+\/node_modules\/([^\/]+)/)?.[1]
 		}
 		else {
-			let relativePath = pathRelative(currentFilePath, targetFilePath)
+			let relativePath = path.relative(path.dirname(currentFilePath), targetFilePath)
 			if (!relativePath) {
 				return undefined
 			}
@@ -117,11 +117,14 @@ export class LuposCodeFixes {
 					break
 				}
 
-				let relativeIndexPath = relativePathPieces.slice(0, i).join('/') + '/index.ts'
-
-				let indexPath = pathJoin(currentFilePath, relativeIndexPath)
-				if (indexPath && this.context.program.getSourceFile(indexPath)) {
-					availablePath = relativeIndexPath
+				for (let fileName of ['index.ts', 'index.d.ts']) {
+					let relativeIndexPath = relativePathPieces.slice(0, i).join('/') + '/' + fileName
+					let indexPath = path.normalize(path.join(currentFilePath, relativeIndexPath))
+	
+					if (indexPath && this.context.program.getSourceFile(indexPath)) {
+						availablePath = relativeIndexPath
+						break
+					}
 				}
 			}
 

@@ -133,58 +133,6 @@ export function getSymbolDisplayPartKind(part: TemplatePart, piece: TemplatePart
 }
 
 
-/** Get relative path. */
-export function pathRelative(currentPath: string, targetPath: string): string | undefined {
-	let currentPieces = currentPath.split('/')
-	let targetPieces = targetPath.split('/')
-
-	if (targetPieces[0] !== currentPieces[0]) {
-		return undefined
-	}
-
-	let index = 1
-	let maxIndex = Math.min(targetPieces.length, currentPieces.length)
-
-	while (index < maxIndex && targetPieces[index] === currentPieces[index]) {
-		index++
-	}
-
-	// Use dir path.
-	let currentRelativePieces = currentPieces.slice(index, currentPieces.length - 1).map(() => '..')
-	let targetRelativePieces = targetPieces.slice(index)
-
-	if (currentRelativePieces.length === 0) {
-		currentRelativePieces.push('.')
-	}
-
-	return [...currentRelativePieces, ...targetRelativePieces].join('/')
-}
-
-
-/** Join path. */
-export function pathJoin(currentPath: string, relativePath: string): string | undefined {
-	let currentPieces = currentPath.split('/')
-	let relativePieces = relativePath.split('/')
-	let currentEndIndex = currentPieces.length - 1
-	let relativeStartIndex = 0
-
-	for (; relativeStartIndex < relativePieces.length; relativeStartIndex++) {
-		let relativePiece = relativePieces[relativeStartIndex]
-		if (relativePiece === '.') {
-			continue
-		}
-		else if (relativePiece === '..') {
-			currentEndIndex--
-		}
-		else {
-			break
-		}
-	}
-
-	return [...currentPieces.slice(0, currentEndIndex), ...relativePieces.slice(relativeStartIndex)].join('/')
-}
-
-
 /** Escape as regexp source text.`\.` -> `\\.` */
 export function escapeAsRegExpSource(text: string): string {
 	return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
