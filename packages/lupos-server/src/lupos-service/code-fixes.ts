@@ -95,17 +95,12 @@ export class LuposCodeFixes {
 		let currentFilePath = template.sourceFile.fileName
 
 		if (targetFilePath.includes('/node_modules/')) {
-			return targetFilePath.match(/^.+\/node_modules\/([^\/]+)/)?.[1]
+			return targetFilePath.match(/\/node_modules\/((?:@[^\/]+\/)?[^\/]+)/)?.[1]
 		}
 		else {
 			let relativePath = path.relative(path.dirname(currentFilePath), targetFilePath)
-			if (!relativePath) {
-				return undefined
-			}
-
-			// From current file.
-			if (relativePath === '.') {
-				return relativePath
+			if (!path.isAbsolute(relativePath) && !relativePath.startsWith('.')) {
+				relativePath = './' + relativePath
 			}
 
 			let relativePathPieces = relativePath.split('/')
@@ -129,6 +124,14 @@ export class LuposCodeFixes {
 			}
 
 			availablePath = availablePath.replace(/(?:\/index)?(?:\.d)?\.ts$/, '')
+
+			// If have `pucelle` after relative, get the module name after `pucelle`.
+			if (availablePath.includes('/pucelle/')) {
+				let pucelleModuleName = availablePath.match(/\/pucelle\/([^\/]+)/)?.[1]
+				if (pucelleModuleName) {
+					return '@pucelle/' + pucelleModuleName
+				}
+			}
 
 			return availablePath
 		}
