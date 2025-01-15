@@ -2,7 +2,7 @@ import type * as TS from 'typescript'
 import {WorkSpaceAnalyzer} from './analyzer'
 import {DiagnosticCode, TemplatePart, TemplatePartPiece, TemplatePartPieceType, TemplatePartType} from '../lupos-ts-module'
 import {Template} from '../template-service'
-import {ProjectContext, ts} from '../core'
+import {Logger, ProjectContext, ts} from '../core'
 import * as path from 'node:path'
 
 
@@ -41,7 +41,7 @@ export class LuposCodeFixes {
 	private getCodeFixOfComponent(part: TemplatePart, template: Template): TS.CodeFixAction[] | undefined {
 		let tagName = part.node.tagName!
 		
-		let component = this.analyzer.getWorkspaceComponentsByName(tagName)?.[0]
+		let component = this.analyzer.getWorkspaceComponentByName(tagName)
 		if (!component) {
 			return undefined
 		}
@@ -98,8 +98,16 @@ export class LuposCodeFixes {
 			return targetFilePath.match(/\/node_modules\/((?:@[^\/]+\/)?[^\/]+)/)?.[1]
 		}
 		else {
-			let relativePath = path.relative(path.dirname(currentFilePath), targetFilePath)
-			if (!path.isAbsolute(relativePath) && !relativePath.startsWith('.')) {
+			Logger.log(currentFilePath + ' ' + targetFilePath)
+			
+			let relativePath = path.relative(path.dirname(currentFilePath), targetFilePath).replace(/\\/g, '/')
+			if (path.isAbsolute(relativePath)) {
+				return undefined
+			}
+
+			Logger.log(relativePath)
+
+			if (!relativePath.startsWith('.')) {
 				relativePath = './' + relativePath
 			}
 
@@ -114,7 +122,7 @@ export class LuposCodeFixes {
 
 				for (let fileName of ['index.ts', 'index.d.ts']) {
 					let relativeIndexPath = relativePathPieces.slice(0, i).join('/') + '/' + fileName
-					let indexPath = path.normalize(path.join(currentFilePath, relativeIndexPath))
+					let indexPath = path.normalize(path.join(currentFilePath, relativeIndexPath)).replace(/\\/g, '/')
 	
 					if (indexPath && this.context.program.getSourceFile(indexPath)) {
 						availablePath = relativeIndexPath
