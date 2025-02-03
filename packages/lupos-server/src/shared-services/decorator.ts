@@ -240,14 +240,14 @@ export class TSLanguageServiceProxy {
 			}
 
 			let modifier = new DiagnosticModifier(this.context.helper)
-			modifier.setStart(diagnostics, sourceFile)
+			modifier.setSourceFile(sourceFile)
 
 			for (let template of this.templateProvider.getAllTemplates(fileName)) {
 				this.templateService.modifySemanticDiagnostics!(template, modifier)
 			}
 
 			// Diagnostics are already in global origin, no need to translate.
-			return modifier.getModified()
+			return modifier.getModified(diagnostics)
 		})
 	}
 
