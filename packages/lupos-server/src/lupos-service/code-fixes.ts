@@ -2,7 +2,7 @@ import type * as TS from 'typescript'
 import {WorkSpaceAnalyzer} from './analyzer'
 import {DiagnosticCode, TemplatePart, TemplatePartPiece, TemplatePartPieceType, TemplatePartType} from '../lupos-ts-module'
 import {Template} from '../template-service'
-import {Logger, ProjectContext, ts} from '../core'
+import {ProjectContext, ts} from '../core'
 import * as path from 'node:path'
 
 
@@ -93,19 +93,16 @@ export class LuposCodeFixes {
 		let targetSourceFile = decl.getSourceFile()
 		let targetFilePath = targetSourceFile.fileName
 		let currentFilePath = template.sourceFile.fileName
+		let currentDirPath = path.dirname(currentFilePath)
 
 		if (targetFilePath.includes('/node_modules/')) {
 			return targetFilePath.match(/\/node_modules\/((?:@[^\/]+\/)?[^\/]+)/)?.[1]
 		}
 		else {
-			Logger.log(currentFilePath + ' ' + targetFilePath)
-			
-			let relativePath = path.relative(path.dirname(currentFilePath), targetFilePath).replace(/\\/g, '/')
+			let relativePath = path.relative(currentDirPath, targetFilePath).replace(/\\/g, '/')
 			if (path.isAbsolute(relativePath)) {
 				return undefined
 			}
-
-			Logger.log(relativePath)
 
 			if (!relativePath.startsWith('.')) {
 				relativePath = './' + relativePath
@@ -121,9 +118,9 @@ export class LuposCodeFixes {
 				}
 
 				for (let fileName of ['index.ts', 'index.d.ts']) {
-					let relativeIndexPath = relativePathPieces.slice(0, i).join('/') + '/' + fileName
-					let indexPath = path.normalize(path.join(currentFilePath, relativeIndexPath)).replace(/\\/g, '/')
-	
+					let relativeIndexPath = relativePathPieces.slice(0, i + 1).join('/') + '/' + fileName
+					let indexPath = path.normalize(path.join(currentDirPath, relativeIndexPath)).replace(/\\/g, '/')
+
 					if (indexPath && this.context.program.getSourceFile(indexPath)) {
 						availablePath = relativeIndexPath
 						break
