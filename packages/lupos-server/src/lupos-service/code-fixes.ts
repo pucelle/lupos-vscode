@@ -65,7 +65,7 @@ export class LuposCodeFixes {
 
 	private getCodeFixOfBinding(part: TemplatePart, template: Template): TS.CodeFixAction[] | undefined {
 		let mainName = part.mainName!
-		let binding = this.analyzer.getBindingByName(mainName, template)
+		let binding = this.analyzer.getWorkspaceBindingByName(mainName)
 
 		if (!binding) {
 			return undefined
@@ -88,7 +88,7 @@ export class LuposCodeFixes {
 		}]
 	}
 
-	// /** Can be a module name, or a relative path name. */
+	/** Can be a module name, or a relative path name. */
 	private getImportPath(decl: TS.ClassDeclaration, template: Template): string | undefined {
 		let targetSourceFile = decl.getSourceFile()
 		let targetFilePath = targetSourceFile.fileName

@@ -150,7 +150,7 @@ export class LuposCompletion {
 			}
 
 			// Use known binding modifiers.
-			if (!availableModifiers) {
+			if (!availableModifiers || availableModifiers.length === 0) {
 				availableModifiers = LuposBindingModifiers[mainName]?.map(item => item.name)
 			}
 
