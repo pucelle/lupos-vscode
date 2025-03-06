@@ -1,6 +1,6 @@
 {
 	"scopeName": "inline.lupos.attribute",
-	"injectionSelector": "L:source.ts meta.embedded.block.html meta.tag",
+	"injectionSelector": "L:source.ts meta.embedded.block.html meta.tag -string.quoted",
 	"patterns": [
 		{
 			"include": "source.ts#template-substitution-element"

@@ -1,7 +1,6 @@
 {
 	"name": "Lupos HTML Template",
 	"scopeName": "inline.lupos.html",
-	"comment": "Reference to https://github.com/microsoft/vscode/blob/main/extensions/html/syntaxes/html.tmLanguage.json",
 	"injectionSelector": "L:source.ts -comment -(string -meta.embedded)",
 	"patterns": [
 		{
