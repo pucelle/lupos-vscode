@@ -37,7 +37,8 @@ If wanting to debug server part, please follow comments in `packages/lupos-serve
 - If bound global listeners, ensure unbind it in `onWillDisconnect`.
 - Validate circular references, I believe this should be hard.
 - Warn about parameters lost tracking, like `items.map(({name}) => {...})`, or when call parameter is observed, but method parameter is not.
-
+- Validate event handler, especially when forget to use function to contain parameters.
+- Validate tag not rightly match or closed. e.g., `</div`.
 
 ## More About
 

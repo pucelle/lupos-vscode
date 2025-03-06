@@ -1,8 +1,7 @@
 import type * as TS from 'typescript'
 import {analyzeLuposIcons, LuposIcon} from './icons'
 import {Logger, ProjectContext} from '../../core'
-import {LuposBinding, LuposComponent, LuposEvent, LuposProperty} from './types'
-import {Analyzer} from '../../lupos-ts-module'
+import {Analyzer, LuposBinding, LuposComponent, LuposEvent, LuposProperty} from '../../lupos-ts-module'
 import {makeStartsMatchExp} from '../utils'
 
 
@@ -12,7 +11,6 @@ export class WorkSpaceAnalyzer extends Analyzer {
 
 	/** All imported icons. */
 	private icons: Map<string, LuposIcon> = new Map()
-	private updating: boolean = false
 
 	constructor(context: ProjectContext) {
 		super(context.helper)
@@ -20,8 +18,8 @@ export class WorkSpaceAnalyzer extends Analyzer {
 	}
 
 	/** Analyze each ts source file. */
-	protected analyzeTSFile(sourceFile: TS.SourceFile) {
-		super.analyzeTSFile(sourceFile)
+	protected analyzeFile(sourceFile: TS.SourceFile) {
+		super.analyzeFile(sourceFile)
 
 		let icons = analyzeLuposIcons(sourceFile, this.context.helper)
 
@@ -34,24 +32,16 @@ export class WorkSpaceAnalyzer extends Analyzer {
 	 * Update to make sure reloading changed source files.
 	 * Update for at most once within a micro task.
 	 */
-	async update() {
-		if (this.updating) {
-			return
-		}
-
-		this.updating = true
+	update() {
 		let changedFiles = this.compareFiles()
 
 		for (let file of changedFiles) {
-			this.analyzeTSFile(file)
+			this.analyzeFile(file)
 		}
 
 		if (changedFiles.size > 0) {
 			Logger.log(`Analyzed ${changedFiles.size} files, now have ${[...this.components].length} components, ${[...this.bindings].length} bindings.`)
 		}
-
-		await Promise.resolve()
-		this.updating = false
 	}
 
 	/** Compare files, returned changed or not analyzed files, always exclude `lib.???.d.ts`. */
@@ -63,29 +53,34 @@ export class WorkSpaceAnalyzer extends Analyzer {
 				.filter(file => !this.context.helper.symbol.isOfTypescriptLib(file))
 		)
 
-		// Not analyzed files.
+		// Not analyzed, or changed, or has referenced changed.
 		let changedFiles: Set<TS.SourceFile> = new Set()
 
-		// Analyzed but have been deleted files.
-		let expiredFiles: Set<TS.SourceFile> = new Set()
+		// Delete files.
+		for (let file of [...this.files.keys()]) {
+			if (!allFiles.has(file)) {
+				this.deleteFile(file)
+				this.files.delete(file)
+			}
+		}
 
 		for (let file of allFiles) {
-			if (!this.files.has(file)) {
-				changedFiles.add(file)
+
+			// Changed file will build a new source file.
+			if (this.files.has(file)) {
+				continue
+			}
+
+			changedFiles.add(file)
+
+			// Also mark all files reference it as changed.
+			let refFromFilePaths = this.references.getByRight(file.fileName)
+			if (refFromFilePaths) {
+				for (let refFromFile of refFromFilePaths) {
+					changedFiles.add(refFromFile)
+				}
 			}
 		}
-
-		for (let file of this.files) {
-			if (!allFiles.has(file)) {
-				expiredFiles.add(file)
-			}
-		}
-
-		for (let file of expiredFiles) {
-			this.makeFileExpire(file)
-		}
-
-		this.files = allFiles
 
 		return changedFiles
 	}

@@ -20,6 +20,7 @@ export class LuposService {
 	private definition: LuposDefinition
 	private diagnostics: TemplateDiagnostics
 	private codeFixes: LuposCodeFixes
+	private freshing: boolean = false
 
 	constructor(context: ProjectContext) {
 		this.context = context
@@ -33,7 +34,17 @@ export class LuposService {
 
 	/** Make sure to reload changed source files. */
 	private beFresh() {
+		if (this.freshing) {
+			return
+		}
+
+		// Keep fresh for a micro task tick after updated.
 		this.analyzer.update()
+		this.freshing = true
+
+		Promise.resolve().then(() => {
+			this.freshing = false
+		})
 	}
 
 	getCompletions(template: Template, temOffset: number): TS.CompletionInfo | undefined {

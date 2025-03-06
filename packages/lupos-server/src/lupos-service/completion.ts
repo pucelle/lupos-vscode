@@ -198,6 +198,7 @@ export class LuposCompletion {
 		let attr = part.attr!
 		let mainName = part.mainName!
 		let items: CompletionItem[] = []
+		let helper = template.helper
 		
 		// `.|property|`, complete property name.
 		if (piece.type === TemplatePartPieceType.Name) {
@@ -221,7 +222,8 @@ export class LuposCompletion {
 				let component = this.analyzer.getComponentByTagName(part.node.tagName!, template)
 				let property = component ? this.analyzer.getComponentProperty(component, mainName) : null
 				if (property) {
-					let typeStringList = this.context.helper.types.splitUnionTypeToStringList(property.type)
+					let propertyType = helper.types.typeOf(property.nameNode)
+					let typeStringList = this.context.helper.types.splitUnionTypeToStringList(propertyType)
 
 					let typeItems = typeStringList.map(name => {
 						return {

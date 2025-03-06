@@ -1,8 +1,8 @@
 import type * as TS from 'typescript'
-import {WorkSpaceAnalyzer, LuposItem} from './analyzer'
+import {WorkSpaceAnalyzer} from './analyzer'
 import {getScriptElementKind} from './utils'
 import {Template} from '../template-service'
-import {TemplatePart, TemplatePartPiece, TemplatePartPieceType, TemplatePartType} from '../lupos-ts-module'
+import {LuposItem, TemplatePart, TemplatePartPiece, TemplatePartPieceType, TemplatePartType} from '../lupos-ts-module'
 import {ProjectContext} from '../core'
 
 

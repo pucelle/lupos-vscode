@@ -8,7 +8,7 @@ import {ProjectContext} from '../core'
 
 
 interface QuickInfoItem extends CompletionItem {
-	type?: TS.Type
+	nameNode?: TS.Node
 }
 
 
@@ -178,10 +178,11 @@ export class LuposQuickInfo {
 	}
 
 	private makeQuickInfo(item: QuickInfoItem | undefined, part: TemplatePart, piece: TemplatePartPiece): TS.QuickInfo | undefined{
-		if (!item || (!item.type && !item.description)) {
+		if (!item || (!item.nameNode && !item.description)) {
 			return undefined
 		}
 
+		let helper = this.context.helper
 		let kind = getScriptElementKind(item, part, piece)
 		
 		let textSpan: TS.TextSpan = {
@@ -199,12 +200,12 @@ export class LuposQuickInfo {
 		if (part.type === TemplatePartType.Component) {
 			headerText = '<' + headerText + '>'
 		}
-		else if (item.type) {
-			headerText += ': ' + this.context.helper.types.getTypeFullText(item.type)
+		else if (item.nameNode) {
+			headerText += ': ' + helper.types.getTypeFullText(helper.types.typeOf(item.nameNode))
 		}
 
 		headers.push({
-			kind: this.context.helper.ts.SymbolDisplayPartKind[getSymbolDisplayPartKind(part, piece)],
+			kind: helper.ts.SymbolDisplayPartKind[getSymbolDisplayPartKind(part, piece)],
 			text: headerText,
 		})
 
