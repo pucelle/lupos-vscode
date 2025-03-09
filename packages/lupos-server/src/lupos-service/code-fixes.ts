@@ -98,6 +98,10 @@ export class LuposCodeFixes {
 		if (targetFilePath.includes('/node_modules/')) {
 			return targetFilePath.match(/\/node_modules\/((?:@[^\/]+\/)?[^\/]+)/)?.[1]
 		}
+		// Imports from linked flit module.
+		else if (targetFilePath.includes('pucelle/flit') && !currentFilePath.includes('pucelle/flit')) {
+			return '@pucelle/flit'
+		}
 		else {
 			let relativePath = path.relative(currentDirPath, targetFilePath).replace(/\\/g, '/')
 			if (path.isAbsolute(relativePath)) {
