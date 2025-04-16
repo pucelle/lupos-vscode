@@ -27,17 +27,12 @@ If wanting to debug server part, please follow comments in `packages/lupos-serve
 
 #### Not provided, but plan to
 
-- `>${...}<` slot content type checking, completion. Haven't find a way to do this.
-- `<lu:if ...>` can narrow variable types for it's content.
-- Type checking and relation between `data` and `renderer` of `<lu:for ${data}>${renderer}`.
-- Defined Transition names completion.
-- HTML Element `.property` Completion & Quick Info & Diagnostic.
+- `>${...}<` slot content completion. Haven't find a way to do this.
 - Ensure `onCreated`, `onReady`, `onUpdated`, `onConnected`, `onWillDisconnect` call `super.onXXX()`.
 - Prevent writing operations inside `render`, `@watch`, `@computed`.
 - If bound global listeners, ensure unbind it in `onWillDisconnect`.
 - Validate circular references, I believe this should be hard.
 - Warn about parameters lost tracking, like `items.map(({name}) => {...})`, or when call parameter is observed, but method parameter is not.
-- Validate event handler, especially when forget to use function to contain parameters.
 - Validate tag not rightly match or closed. e.g., `</div`.
 
 ## More About
