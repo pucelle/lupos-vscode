@@ -34,6 +34,8 @@ If wanting to debug server part, please follow comments in `packages/lupos-serve
 - Validate circular references, I believe this should be hard.
 - Warn about parameters lost tracking, like `items.map(({name}) => {...})`, or when call parameter is observed, but method parameter is not.
 - Validate tag not rightly match or closed. e.g., `</div`.
+- Can import modules in component or binding completion.
+
 
 ## More About
 
