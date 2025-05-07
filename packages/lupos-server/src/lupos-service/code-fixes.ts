@@ -89,7 +89,7 @@ export class LuposCodeFixes {
 	}
 
 	/** Can be a module name, or a relative path name. */
-	private getImportPath(decl: TS.ClassDeclaration | TS.InterfaceDeclaration, template: Template): string | undefined {
+	private getImportPath(decl: TS.ClassLikeDeclaration | TS.InterfaceDeclaration, template: Template): string | undefined {
 		let targetSourceFile = decl.getSourceFile()
 		let targetFilePath = targetSourceFile.fileName
 		let currentFilePath = template.sourceFile.fileName

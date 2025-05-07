@@ -141,7 +141,7 @@ export class LuposCompletion {
 
 			// Try parse bind class modifiers parameter.
 			if (binding) {
-				let bindingClassParams = this.context.helper.class.getConstructorParameters(binding.declaration)
+				let bindingClassParams = this.context.helper.class.getConstructorParameters(binding.declaration, true)
 				let modifiersParamType = bindingClassParams && bindingClassParams.length === 3 ? bindingClassParams[2].type : null
 
 				availableModifiers = modifiersParamType ?
