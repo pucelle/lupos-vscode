@@ -33,8 +33,11 @@ If wanting to debug server part, please follow comments in `packages/lupos-serve
 - If bound global listeners, ensure unbind it in `onWillDisconnect`.
 - Validate circular references, I believe this should be hard.
 - Warn about parameters lost tracking, like `items.map(({name}) => {...})`, or when call parameter is observed, but method parameter is not.
+- Warn about filtered list lost tracking, like `items.filter(...)`.
 - Validate tag not rightly match or closed. e.g., `</div`.
-- Can import modules in component or binding completion.
+- Can import modules after complete component or binding name.
+- Provides completion and quick info for control command, and their properties, like `<lu:keyed weakCache>`.
+- Can diagnose required, but not provided properties.
 
 
 ## More About
