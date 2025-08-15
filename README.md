@@ -38,6 +38,9 @@ If wanting to debug server part, please follow comments in `packages/lupos-serve
 - Can import modules after complete component or binding name.
 - Provides completion and quick info for control command, and their properties, like `<lu:keyed weakCache>`.
 - Can diagnose required, but not provided properties.
+- Can find reference and rename `<Com>` or `:binding`, and properties and event names.
+- `.prop` without value specified can only assign to `boolean`.
+- Fix `this` parsed to generic type. Fix function parameter type checking.
 
 
 ## More About
