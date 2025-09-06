@@ -8,7 +8,7 @@ import {PluginConfig} from './config'
  * https://github.com/microsoft/TypeScript/wiki/Writing-a-Language-Service-Plugin
  * https://github.com/microsoft/TypeScript/wiki/Standalone-Server-%28tsserver%29
  * 
- * Firstly set environment variable `TSS_LOG=-logToFile true -level verbose -file "AnyFolder\ts.log"`, start vscode.
+ * Firstly set environment variable `TSS_LOG=-logToFile true -level verbose -file "AnyFolder\ts.log"`, re-start vscode.
  * Then copy following codes and put it to a js file in `AnyFolder`, and run it.
  */
 

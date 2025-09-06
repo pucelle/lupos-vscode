@@ -124,4 +124,32 @@ export class Template extends TemplateBasis implements OriginTranslator {
 	intersectWith(globalStart: number, globalEnd: number): boolean {
 		return !(globalEnd < this.globalStart || globalStart > globalEnd)
 	}
+
+	/** Get node from local offset. */
+	getNodeAtOffset(localOffset: number): TS.Node | undefined {
+		return this.helper.getNodeAtOffset(this.node, this.localOffsetToGlobal(localOffset))
+	}
+
+	/** Test whether searching node at specified offset get value range. */
+	isWithinValueRange(localOffset: number): boolean {
+		let ts = this.helper.ts
+		let gloOffset = this.localOffsetToGlobal(localOffset)
+
+		let currentNode = this.helper.getNodeAtOffset(this.node, gloOffset)
+		if (!currentNode) {
+			return false
+		}
+
+		// `${a.b|...}` - If mouse is here, within value range.
+		if (!ts.isTemplateLiteralToken(currentNode)) {
+			return true
+		}
+
+		// `${...|}` - If mouse is here, will capture a template tail node, within value range.
+		if (ts.isTemplateMiddleOrTemplateTail(currentNode) && currentNode.getStart() === gloOffset) {
+			return true
+		}
+
+		return false
+	}
 }

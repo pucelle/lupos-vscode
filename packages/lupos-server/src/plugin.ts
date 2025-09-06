@@ -15,7 +15,7 @@ export class LuposPlugin implements TS.server.PluginModule {
 
 	/** Avoid decorate a single ts language server for twice. */
 	private decoratedServices: WeakMap<TS.LanguageService, TS.LanguageService> = new WeakMap()
-
+	
 	constructor(typescript: typeof TS) {
 		this.ts = typescript
 	}

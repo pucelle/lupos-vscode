@@ -60,7 +60,7 @@ export class LuposService {
 
 		this.beFresh()
 
-		return this.completion.getCompletions(part, piece, template)
+		return this.completion.getCompletions(part, piece, template, temOffset)
 	}
 
 	getQuickInfo(template: Template, temOffset: number): TS.QuickInfo | undefined {

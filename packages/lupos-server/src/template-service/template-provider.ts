@@ -47,16 +47,6 @@ export class TemplateProvider {
 			return null
 		}
 
-		// `${a.b|...}` - If mouse is here, stop.
-		if (!ts.isTemplateLiteralToken(currentNode)) {
-			return null
-		}
-
-		// `${...|}` - If mouse is here, will capture a template tail node, stop too.
-		if (ts.isTemplateMiddleOrTemplateTail(currentNode) && currentNode.getStart() === offset) {
-			return null
-		}
-
 		// Find html`...`
 		let taggedNode = this.context.helper.findOutward(currentNode, ts.isTaggedTemplateExpression)
 
