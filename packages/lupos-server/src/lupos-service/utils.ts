@@ -4,6 +4,7 @@ import {TemplatePart, TemplatePartPiece, TemplatePartPieceType, TemplatePartType
 import type * as TS from 'typescript'
 
 
+/** For completion. */
 export function getScriptElementKind(
 	item: CompletionItem,
 	part: TemplatePart | undefined,
@@ -80,6 +81,7 @@ export function getScriptElementKind(
 }
 
 
+/** For quick info. */
 export function getSymbolDisplayPartKind(part: TemplatePart, piece: TemplatePartPiece): TS.SymbolDisplayPartKind {
 	switch (part.type) {
 		case TemplatePartType.Component:

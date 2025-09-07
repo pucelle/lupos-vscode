@@ -1,5 +1,5 @@
 import type * as TS from 'typescript'
-import {TemplatePart, TemplatePartPiece, TemplatePartPieceType, TemplatePartType} from '../../lupos-ts-module'
+import {Helper, TemplatePart, TemplatePartPiece, TemplatePartPieceType, TemplatePartType} from '../../lupos-ts-module'
 import {Template} from '../../template-service'
 import {inferMemberType} from './helpers/infer-member-type'
 import {WorkSpaceAnalyzer} from '../analyzer'
@@ -7,7 +7,7 @@ import {CompletionItem} from '../../complete-data'
 
 
 /** Get complete for template value, typescript part. */
-export function getTemplateValueCompletions(
+export function getTemplateValueCompletionItems(
 	part: TemplatePart,
 	piece: TemplatePartPiece,
 	template: Template,
@@ -17,22 +17,29 @@ export function getTemplateValueCompletions(
 	let helper = analyzer.helper
 	let ts = helper.ts
 
-	if (part.type === TemplatePartType.Property) {
-		if (piece.type === TemplatePartPieceType.AttrValue) {
-			let node = template.getNodeAtOffset(temOffset)
-			if (!node || !ts.isIdentifier(node)) {
-				return []
-			}
-
-			return getComponentPropertyCompletion(template, part, node, analyzer) ?? []
+	if (part.type === TemplatePartType.Property && piece.type === TemplatePartPieceType.AttrValue) {
+		let node = template.getNodeAtOffset(temOffset)
+		if (!node || !ts.isIdentifier(node)) {
+			return []
 		}
+
+		return getComponentPropertyCompletionItems(template, part, node, analyzer) ?? []
+	}
+
+	else if (part.type === TemplatePartType.Binding && piece.type === TemplatePartPieceType.AttrValue) {
+		let node = template.getNodeAtOffset(temOffset)
+		if (!node || !ts.isIdentifier(node)) {
+			return []
+		}
+
+		return getBindingParameterCompletion(template, part, node, analyzer) ?? []
 	}
 
 	return []
 }
 
 
-function getComponentPropertyCompletion(
+function getComponentPropertyCompletionItems(
 	template: Template,
 	part: TemplatePart,
 	node: TS.Identifier,
@@ -40,7 +47,6 @@ function getComponentPropertyCompletion(
 ): CompletionItem[] | null {
 
 	let helper = analyzer.helper
-	let ts = helper.ts
 	let mainName = part.mainName!
 	let tagName = part.node.tagName!
 
@@ -60,7 +66,20 @@ function getComponentPropertyCompletion(
 		return null
 	}
 
-	let memberType = inferMemberType(node, valueNode, propertyType, helper)
+	return inferCompletionItems(node, valueNode, propertyType, template, helper)
+}
+
+
+function inferCompletionItems(
+	node: TS.Identifier,
+	valueNode: TS.Expression,
+	valueType: TS.TypeNode,
+	template: Template,
+	helper: Helper
+): CompletionItem[] | null {
+	let ts = helper.ts
+
+	let memberType = inferMemberType(node, valueNode, valueType, helper)
 	if (!memberType) {
 		return null
 	}
@@ -84,13 +103,16 @@ function getComponentPropertyCompletion(
 		let typeText = type ? helper.types.getTypeFullText(type) : 'any'
 		let detail = `${typeText}`
 		let description = helper.getNodeDescription(mt.member) ?? ''
+		let start = template.globalOffsetToLocal(node.getStart())
+		let end = template.globalOffsetToLocal(node.getEnd())
 
 		let item: CompletionItem = {
 			name: key,
 			detail,
 			description,
 			kind: ts.ScriptElementKind.memberVariableElement,
-			node,
+			start,
+			end
 		}
 
 		items.push(item)
@@ -101,127 +123,55 @@ function getComponentPropertyCompletion(
 
 
 
-// export function diagnoseBinding(
-// 	piece: TemplatePartPiece,
-// 	part: TemplatePart,
-// 	template: TemplateBasis,
-// 	modifier: DiagnosticModifier,
-// 	analyzer: Analyzer
-// ) {
-// 	let start = template.localOffsetToGlobal(piece.start)
-// 	let length = template.localOffsetToGlobal(piece.end) - start
-// 	let helper = template.helper
-// 	let types = helper.types
-// 	let ts = helper.ts
-// 	let mainName = part.mainName!
-// 	let modifiers = part.modifiers!
+export function getBindingParameterCompletion(
+	template: Template,
+	part: TemplatePart,
+	node: TS.Identifier,
+	analyzer: WorkSpaceAnalyzer
+) {
 
-// 	if (piece.type === TemplatePartPieceType.Name) {
-// 		let ref = template.getReferenceByName(mainName)
-// 		if (ref) {
-// 			modifier.deleteNeverReadFromNodeExtended(ref)
-// 		}
+	let helper = template.helper
+	let ts = helper.ts
+	let mainName = part.mainName!
 
-// 		let binding = analyzer.getBindingByName(mainName, template)
-// 		if (!binding && !LuposKnownInternalBindings[mainName]) {
-// 			modifier.add(start, length, DiagnosticCode.MissingImportOrDeclaration, `Binding class "${mainName}" is not imported or declared.`)
-// 			return
-// 		}
-// 	}
+	let binding = analyzer.getBindingByName(mainName, template)
+	if (!binding) {
+		return null
+	}
 
-// 	else if (piece.type === TemplatePartPieceType.Modifier) {
-// 		let modifierIndex = piece.modifierIndex!
-// 		let modifierText = modifiers[modifierIndex]
+	let updateMethod = helper.class.getMethod(binding.declaration, 'update', true)
+	if (!updateMethod) {
+		return
+	}
 
-// 		if (mainName === 'class') {
-// 			if (modifierIndex > 0) {
-// 				modifier.add(start, length, DiagnosticCode.NotAssignable, `Modifier "${modifierText}" is not allowed, only one modifier as class name can be specified.`)
-// 				return
-// 			}
-// 		}
-// 		else if (mainName === 'style') {
-// 			if (modifierIndex > 1) {
-// 				modifier.add(start, length, DiagnosticCode.NotAssignable, `Modifier "${modifierText}" is not allowed, at most two modifiers can be specified for ":style".`)
-// 				return
-// 			}
+	let parameters = updateMethod.parameters
+	let valueNode = template.getPartUniqueValue(part)
+	if (!valueNode) {
+		return null
+	}
 
-// 			if (modifierIndex === 1 && !LuposBindingModifiers.style.find(item => item.name === modifierText)) {
-// 				modifier.add(start, length, DiagnosticCode.NotAssignable, `Modifier "${modifierText}" is not allowed, it must be one of "${LuposBindingModifiers.style.map(item => item.name).join(', ')}".`)
-// 				return
-// 			}
-// 		}
-// 		else if (LuposBindingModifiers[mainName]) {
-// 			if (!LuposBindingModifiers[mainName].find(item => item.name === modifierText)) {
-// 				modifier.add(start, length, DiagnosticCode.NotAssignable, `Modifier "${modifierText}" is not allowed, it must be one of "${LuposBindingModifiers[mainName].map(item => item.name).join(', ')}".`)
-// 				return
-// 			}
-// 		}
-// 		else {
-// 			let binding = analyzer.getBindingByName(mainName, template)
-// 			if (binding) {
-// 				let bindingClassParams = helper.class.getConstructorParameters(binding.declaration, true)
-// 				let modifiersParamType = bindingClassParams && bindingClassParams.length === 3 ? bindingClassParams[2].type : null
-				
-// 				let availableModifiers = modifiersParamType ?
-// 					types.splitUnionTypeToStringList(types.typeOfTypeNode(modifiersParamType)!)
-// 					: null
+	// `?:binding=${a, b}`, `?:binding=${(a, b)}`
+	if (ts.isParenthesizedExpression(valueNode)) {
+		valueNode = valueNode.expression
+	}
 
-// 				if (availableModifiers && availableModifiers.length > 0) {
-// 					if (!availableModifiers.find(name => name === modifierText)) {
-// 						modifier.add(start, length, DiagnosticCode.NotAssignable, `Modifier "${modifierText}" is not allowed, it must be one of "${availableModifiers.join(', ')}".`)
-// 						return
-// 					}
-// 				}
-// 			}
-// 		}
-// 	}
+	let valueNodes = helper.pack.unPackCommaBinaryExpressions(valueNode)
 
-// 	else if (piece.type === TemplatePartPieceType.AttrValue) {
-// 		let valueNodes: (TS.Expression | null)[] = [null]
-// 		let valueTypes = [template.getPartValueType(part)]
+	// First value decides whether binding should be activated.
+	if (part.namePrefix === '?:') {
+		valueNodes = valueNodes.slice(1)
+	}
 
-// 		// `?:binding=${a, b}`, `?:binding=${(a, b)}`
-// 		if (!part.strings && part.valueIndices) {
-// 			let valueNode = template.valueNodes[part.valueIndices[0].index]
+	let valueIndex = valueNodes.findIndex(n => n.getStart() <= node.getStart() && n.getEnd() >= node.getEnd())
+	if (valueIndex === -1) {
+		return null
+	}
 
-// 			if (ts.isParenthesizedExpression(valueNode)) {
-// 				valueNode = valueNode.expression
-// 			}
+	valueNode = valueNodes[valueIndex]
+	let parameter = parameters[valueIndex]
+	if (!parameter || !parameter.type) {
+		return null
+	}
 
-// 			let splittedValueNodes = helper.pack.unPackCommaBinaryExpressions(valueNode)
-			
-// 			valueNodes = splittedValueNodes
-// 			valueTypes = splittedValueNodes.map(node => types.typeOf(node))
-
-// 			// First value decides whether binding should be activated.
-// 			if (part.namePrefix === '?:') {
-// 				valueNodes = splittedValueNodes.slice(1)
-// 				valueTypes = valueTypes.slice(1)
-// 			}
-
-// 			// May unused comma expression of a for `${a, b}`, here remove it.
-// 			if (splittedValueNodes.length > 1) {
-// 				for (let i = 0; i < splittedValueNodes.length - 1; i++) {
-// 					modifier.deleteOfNode(splittedValueNodes[i], [DiagnosticCode.UnUsedComma])
-// 				}
-// 			}
-// 		}
-
-// 		// Currently we are not able to build a function type dynamically,
-// 		// so can't test whether parameters match binding update method.
-
-// 		let binding = analyzer.getBindingByName(mainName, template)
-// 		if (binding) {
-// 			if (mainName === 'class') {
-// 				diagnoseClassUpdateParameter(binding, valueNodes, valueTypes, start, length, part, template, modifier)
-// 			}
-// 			else if (mainName === 'style') {
-// 				diagnoseStyleUpdateParameter(binding, valueNodes, valueTypes, start, length, part, template, modifier)
-// 			}
-// 			else if (mainName === 'ref') {}
-// 			else {
-// 				diagnoseOtherUpdateParameter(binding, valueNodes, valueTypes, start, length, template, modifier)
-// 			}
-// 		}
-// 	}
-// }
+	return inferCompletionItems(node, valueNode, parameter.type, template, helper)
+}

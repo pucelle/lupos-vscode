@@ -47,7 +47,7 @@ export class LuposService {
 		})
 	}
 
-	getCompletions(template: Template, temOffset: number): TS.CompletionInfo | undefined {
+	getCompletionInfo(template: Template, temOffset: number): TS.CompletionInfo | undefined {
 		let part = template.getPartAt(temOffset)
 		if (!part) {
 			return undefined
@@ -60,7 +60,23 @@ export class LuposService {
 
 		this.beFresh()
 
-		return this.completion.getCompletions(part, piece, template, temOffset)
+		return this.completion.getCompletionInfo(part, piece, template, temOffset)
+	}
+
+	getCompletionEntryDetails(template: Template, temOffset: number): TS.CompletionEntryDetails | undefined {
+		let part = template.getPartAt(temOffset)
+		if (!part) {
+			return undefined
+		}
+
+		let piece = getTemplatePartPieceAt(part, temOffset)
+		if (!piece) {
+			return undefined
+		}
+
+		this.beFresh()
+
+		return this.completion.getCompletionEntryDetails(part, piece, template, temOffset)
 	}
 
 	getQuickInfo(template: Template, temOffset: number): TS.QuickInfo | undefined {

@@ -34,7 +34,7 @@ export class TemplateServiceRouter implements TemplateLanguageService {
 		let tsCompletions: TS.CompletionInfo = VS2TSTranslator.makeEmptyTSCompletion()
 
 		if (region.languageId === 'html') {
-			let luposCompletions = this.luposService.getCompletions(template, temOffset)
+			let luposCompletions = this.luposService.getCompletionInfo(template, temOffset)
 			if (luposCompletions) {
 				tsCompletions.entries.push(...luposCompletions.entries)
 			}
@@ -57,12 +57,9 @@ export class TemplateServiceRouter implements TemplateLanguageService {
 		let region = template.embedded.getRegionAt(temOffset)
 
 		if (region.languageId === 'html') {
-			let luposCompletions = this.luposService.getCompletions(template, temOffset)
-			if (luposCompletions) {
-				let luposCompletionEntry = luposCompletions.entries.find(entry => entry.name == name)
-				if (luposCompletionEntry) {
-					return VS2TSTranslator.translateTSCompletionEntryToEntryDetails(luposCompletionEntry)
-				}
+			let luposCompletionDetails = this.luposService.getCompletionEntryDetails(template, temOffset)
+			if (luposCompletionDetails) {
+				return luposCompletionDetails
 			}
 		}
 

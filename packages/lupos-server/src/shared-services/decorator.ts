@@ -93,8 +93,8 @@ export class TSLanguageServiceProxy {
 
 			// Replace with lupos template completion.
 			let temOffset = template.globalOffsetToLocal(gloOffset)
-			let info = this.templateService.getCompletionsAtPosition!(template, temOffset, options)
 			let withinValueRange = template.isWithinValueRange(temOffset)
+			let info = this.templateService.getCompletionsAtPosition!(template, temOffset, options)
 
 			if (info) {
 				info.entries.forEach(entry => this.translateTextSpan(entry.replacementSpan, template!))
@@ -128,7 +128,12 @@ export class TSLanguageServiceProxy {
 
 			// Replace with lupos template completion.
 			let temOffset = template.globalOffsetToLocal(gloOffset)
+			let withinValueRange = template.isWithinValueRange(temOffset)
 			let entry = this.templateService.getCompletionEntryDetails!(template, temOffset, name, options)
+
+			if (withinValueRange && !entry) {
+				return callOriginal()
+			}
 
 			return entry
 		})
@@ -147,10 +152,15 @@ export class TSLanguageServiceProxy {
 			
 			// Replace with lupos template completion.
 			let temOffset = template.globalOffsetToLocal(gloOffset)
+			let withinValueRange = template.isWithinValueRange(temOffset)
 			let info = this.templateService.getQuickInfoAtPosition!(template, temOffset)
 
 			if (info) {
 				this.translateTextSpan(info.textSpan, template)
+			}
+
+			if (withinValueRange && !info) {
+				return callOriginal()
 			}
 
 			return info
@@ -170,7 +180,12 @@ export class TSLanguageServiceProxy {
 
 			// Replace with template definitions.
 			let temOffset = template.globalOffsetToLocal(gloOffset)
+			let withinValueRange = template.isWithinValueRange(temOffset)
 			let definitions = this.templateService.getDefinitionAtPosition!(template, temOffset)
+
+			if (withinValueRange && definitions.length === 0) {
+				return callOriginal()
+			}
 
 			return definitions
 		})
@@ -189,7 +204,12 @@ export class TSLanguageServiceProxy {
 
 			// Replace with template definitions.
 			let temOffset = template.globalOffsetToLocal(gloOffset)
+			let withinValueRange = template.isWithinValueRange(temOffset)
 			let definitionAndSpan = this.templateService.getDefinitionAndBoundSpan!(template, temOffset)
+
+			if (withinValueRange && (!definitionAndSpan || !definitionAndSpan.definitions || definitionAndSpan.definitions.length === 0)) {
+				return callOriginal()
+			}
 
 			return definitionAndSpan
 		})
@@ -323,10 +343,15 @@ export class TSLanguageServiceProxy {
 			}
 
 			let temOffset = template.globalOffsetToLocal(gloOffset)
+			let withinValueRange = template.isWithinValueRange(temOffset)
 			let items = this.templateService.getSignatureHelpItemsAtPosition!(template, temOffset, options)
 
 			if (items) {
 				this.translateTextSpan(items.applicableSpan, template)
+			}
+
+			if (withinValueRange && (!items || items.items.length === 0)) {
+				return callOriginal()
 			}
 
 			// Replace original signature help to template ones.
@@ -368,6 +393,7 @@ export class TSLanguageServiceProxy {
 			}
 
 			let temOffset = template.globalOffsetToLocal(gloOffset)
+			let withinValueRange = template.isWithinValueRange(temOffset)
 			let symbols = this.templateService.getReferencesAtPosition!(template, temOffset)
 
 			if (symbols) {
@@ -392,6 +418,10 @@ export class TSLanguageServiceProxy {
 				})
 			}
 
+			if (withinValueRange && (!symbols || symbols.length === 0)) {
+				return callOriginal()
+			}
+
 			// Replace original references to template ones.
 			return symbols
 		})
@@ -403,13 +433,18 @@ export class TSLanguageServiceProxy {
 		}
 
 		this.wrap('getJsxClosingTagAtPosition', (callOriginal, fileName: string, gloOffset: number) => {
-			let context = this.templateProvider.getTemplateAt(fileName, gloOffset)
-			if (!context) {
+			let template = this.templateProvider.getTemplateAt(fileName, gloOffset)
+			if (!template) {
 				return callOriginal()
 			}
 
-			let temOffset = context.globalOffsetToLocal(gloOffset)
-			let info = this.templateService.getJsxClosingTagAtPosition!(context, temOffset)
+			let temOffset = template.globalOffsetToLocal(gloOffset)
+			let withinValueRange = template.isWithinValueRange(temOffset)
+			let info = this.templateService.getJsxClosingTagAtPosition!(template, temOffset)
+
+			if (withinValueRange && !info) {
+				return callOriginal()
+			}
 
 			// Replace original closing tag to template ones.
 			return info

@@ -334,35 +334,6 @@ export namespace VS2TSTranslator {
 		}
 	}
 
-
-	export function translateTSCompletionEntryToEntryDetails(entry: TS.CompletionEntry): TS.CompletionEntryDetails {
-		let displayPart: TS.SymbolDisplayPart | null = null
-		let documentation: TS.SymbolDisplayPart | null = null
-
-		if (entry.labelDetails?.detail) {
-			displayPart = {
-				kind: 'text',
-				text: entry.name + ': ' + entry.labelDetails?.detail,
-			}
-		}
-
-		if (entry.labelDetails?.description) {
-			documentation = {
-				kind: 'text',
-				text: entry.labelDetails?.description,
-			}
-		}
-
-		return {
-			name: entry.name,
-			kindModifiers: entry.kindModifiers || 'declare',
-			kind: entry.kind,
-			displayParts: displayPart ? [displayPart] : [],
-			documentation: documentation ? [documentation] : [],
-			tags: [],
-		}
-	}
-
 	
 	export function translateVSHighlightsToReferenceSymbol(
 		highlights: vscode.DocumentHighlight[],

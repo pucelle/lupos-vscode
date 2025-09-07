@@ -1,11 +1,11 @@
 import type * as TS from 'typescript'
-import {getScriptElementKind} from './utils'
 import {TemplatePart, TemplatePartType, TemplateSlotPlaceholder, TemplatePartPiece, TemplatePartPieceType, LuposControlFlowTags, LuposBindingModifiers, LuposSimulatedEvents, LuposDOMEventModifiers, LuposDOMEventCategories, LuposComponentAttributes, getBindingModifierCompletionItems, findCompletionDataItem, filterCompletionDataItems} from '../lupos-ts-module'
 import {ProjectContext, ts} from '../core'
 import {WorkSpaceAnalyzer} from './analyzer'
 import {DOMStyleProperties, DOMElementEvents, filterBooleanAttributeCompletionItems, filterDOMElementCompletionItems, CompletionItem, assignCompletionItems} from '../complete-data'
 import {Template} from '../template-service'
-import {getTemplateValueCompletions} from './template-value-service'
+import {getTemplateValueCompletionItems} from './template-value-service'
+import {makeCompletionEntryDetails, makeCompletionInfo} from './completion-translator'
 
 
 /** Provide lupos completion service. */
@@ -19,7 +19,18 @@ export class LuposCompletion {
 		this.context = analyzer.context
 	}
 
-	getCompletions(part: TemplatePart, piece: TemplatePartPiece, template: Template, temOffset: number): TS.CompletionInfo | undefined {
+	getCompletionInfo(part: TemplatePart, piece: TemplatePartPiece, template: Template, temOffset: number): TS.CompletionInfo {
+		let items = this.getCompletionItems(part, piece, template, temOffset)
+		return makeCompletionInfo(items, part, piece)
+	}
+
+	getCompletionEntryDetails(part: TemplatePart, piece: TemplatePartPiece, template: Template, temOffset: number): TS.CompletionEntryDetails | undefined {
+		let items = this.getCompletionItems(part, piece, template, temOffset)
+		return makeCompletionEntryDetails(items, part, piece)
+	}
+
+	protected getCompletionItems(part: TemplatePart, piece: TemplatePartPiece, template: Template, temOffset: number): CompletionItem[] {
+		let items: CompletionItem[] = []
 
 		// Print part
 		// let p = {...part} as any
@@ -36,34 +47,28 @@ export class LuposCompletion {
 			let components = this.analyzer.getComponentsForCompletion(part.node.tagName || '')
 			let flowControlItems = filterCompletionDataItems(LuposControlFlowTags, part.node.tagName || '')
 
-			return this.makeCompletionInfo([...components, ...flowControlItems], part, piece, template)
+			items = [...components, ...flowControlItems]
 		}
 
 		// `:binding`, `?:binding`
 		// VSCode has a bug here: input unique `:` cause no completion action.
 		else if (part.type === TemplatePartType.Binding) {
-			let items = this.getBindingCompletionItems(part, piece, template)
-			return this.makeCompletionInfo(items, part, piece, template)
+			items = this.getBindingCompletionItems(part, piece, template)
 		}
 
 		// `?xxx`
 		else if (part.type === TemplatePartType.QueryAttribute) {
-			let items = this.getQueryAttributeCompletionItems(part, piece)
-			return this.makeCompletionInfo(items, part, piece, template)
+			items = this.getQueryAttributeCompletionItems(part, piece)
 		}
 
 		// `.xxx`
 		else if (part.type === TemplatePartType.Property) {
-			let items = this.getPropertyCompletionInfo(part, piece, template)
-			items.push(...getTemplateValueCompletions(part, piece, template, temOffset, this.analyzer))
-
-			return this.makeCompletionInfo(items, part, piece, template)
+			items = this.getPropertyCompletionItems(part, piece, template)
 		}
 
 		// `@xxx` or `@@xxx`
 		else if (part.type === TemplatePartType.Event) {
-			let items = this.getEventCompletionItems(part, piece, template)
-			return this.makeCompletionInfo(items, part, piece, template)
+			items = this.getEventCompletionItems(part, piece, template)
 		}
 
 		// `tagName="xxx"`
@@ -71,16 +76,16 @@ export class LuposCompletion {
 			&& TemplateSlotPlaceholder.isComponent(part.node.tagName!)
 		) {
 			if (piece.type === TemplatePartPieceType.Name) {
-				let items = filterCompletionDataItems(LuposComponentAttributes, part.mainName!)
-				return this.makeCompletionInfo(items, part, piece, template)
+				items = filterCompletionDataItems(LuposComponentAttributes, part.mainName!)
 			}
 			else if (piece.type === TemplatePartPieceType.AttrValue && part.mainName === 'tagName') {
-				let items = filterDOMElementCompletionItems(part.attr!.value!)
-				return this.makeCompletionInfo(items, part, piece, template)
+				items = filterDOMElementCompletionItems(part.attr!.value!)
 			}
 		}
 
-		return undefined
+		items.push(...getTemplateValueCompletionItems(part, piece, template, temOffset, this.analyzer))
+
+		return items
 	}
 
 	private getBindingCompletionItems(part: TemplatePart, piece: TemplatePartPiece, template: Template): CompletionItem[] {
@@ -197,7 +202,7 @@ export class LuposCompletion {
 		return items
 	}
 
-	private getPropertyCompletionInfo(part: TemplatePart, piece: TemplatePartPiece, template: Template): CompletionItem[] {
+	private getPropertyCompletionItems(part: TemplatePart, piece: TemplatePartPiece, template: Template): CompletionItem[] {
 		let attr = part.attr!
 		let mainName = part.mainName!
 		let items: CompletionItem[] = []
@@ -287,65 +292,5 @@ export class LuposCompletion {
 		}
 
 		return items
-	}
-
-	private makeCompletionInfo(
-		items: CompletionItem[] | undefined,
-		part: TemplatePart,
-		piece: TemplatePartPiece,
-		template: Template
-	): TS.CompletionInfo | undefined {
-		if (!items) {
-			return undefined
-		}
-
-		let names: Set<string> = new Set()
-
-		let entries: TS.CompletionEntry[] = items.map(item => {
-			let kind = getScriptElementKind(item, part, piece)
-			let start = piece.start + (part.namePrefix?.length ?? 0)
-			let end = piece.end
-
-			if (item.node) {
-				start = template.globalOffsetToLocal(item.node.getStart())
-				end = template.globalOffsetToLocal(item.node.getEnd())
-			}
-
-			let replacementSpan: TS.TextSpan = {
-				start,
-				length: end - start,
-			}
-
-			return {
-				name: item.name,
-				kind,
-				sortText: String(item.order ?? 0),
-				insertText: item.name,
-				replacementSpan,
-
-				// Test shows description is not shown.
-				labelDetails: {detail: item.detail, description: item.description},
-
-				// Test shows description is not shown.
-				//sourceDisplay: [{kind: 'text', text: item.description}],
-			} as TS.CompletionEntry
-		})
-
-		// Filter out repetitive items.
-		entries = entries.filter(item => {
-			if (names.has(item.name)) {
-				return false
-			}
-
-			names.add(item.name)
-			return true
-		})
-
-		return {
-			isGlobalCompletion: false,
-			isMemberCompletion: false,
-			isNewIdentifierLocation: false,
-			entries: entries,
-		}
 	}
 }
