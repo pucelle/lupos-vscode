@@ -3,15 +3,6 @@ import {ts} from '../../../core'
 import {Helper, ObjectLike} from '../../../lupos-ts-module'
 
 
-interface MemberType {
-
-	/** The match member, normally the parent of node. */
-	member: TS.ClassElement | TS.TypeElement
-
-	/** The match member type, represents the type of `member`. */
-	type: TS.TypeNode | undefined
-}
-
 interface PropertyItem {
 
 	/** The property name. */
@@ -19,6 +10,15 @@ interface PropertyItem {
 
 	/** The property value. */
 	value: TS.Expression | TS.Identifier | undefined
+}
+
+interface MemberType {
+
+	/** The match member, normally the parent of node. */
+	member: TS.ClassElement | TS.TypeElement
+
+	/** The match member type, represents the type of `member`. */
+	type: TS.TypeNode | undefined
 }
 
 interface MemberTypeItem {

@@ -27,20 +27,17 @@ If wanting to debug server part, please follow comments in `packages/lupos-serve
 
 #### Not provided, but plan to
 
-- `>${...}<` slot content completion. Haven't find a way to do this.
-- Ensure `onCreated`, `onReady`, `onUpdated`, `onConnected`, `onWillDisconnect` call `super.onXXX()`.
-- Prevent writing operations inside `render`, `@watch`, `@computed`.
-- If bound global listeners, ensure unbind it in `onWillDisconnect`.
-- Validate circular references, I believe this should be hard.
-- Warn about parameters lost tracking, like `items.map(({name}) => {...})`, or when call parameter is observed, but method parameter is not.
-- Warn about filtered list lost tracking, like `items.filter(...)`.
+- `>${...}<` slot content completion. Now can only complete for object properties.
+- Validate circular references, I believe this should be superior hard.
+- Warn about parameters lost tracking, like `items.map(({name}) => {...})`, or when call argument is observed, but method parameter is not.
 - Validate tag not rightly match or closed. e.g., `</div`.
+- Can find reference and rename `<Com>` or `:binding`, properties and event names.
+
+- Warn about filtered list lost tracking, like `filtered = items.filter(...)`, `items` get observed, but `filtered` is not by default.
+- `.prop` without value specified can only assign to `boolean`.
 - Can import modules after complete component or binding name.
 - Provides completion and quick info for control command, and their properties, like `<lu:keyed weakCache>`.
 - Can diagnose required, but not provided properties.
-- Can find reference and rename `<Com>` or `:binding`, and properties and event names.
-- `.prop` without value specified can only assign to `boolean`.
-- Fix `this` parsed to generic type. Fix function parameter type checking.
 
 
 ## More About
