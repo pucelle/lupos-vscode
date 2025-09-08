@@ -38,7 +38,7 @@ function* walkMemberTypeItems(node: TS.Node, type: TS.TypeNode, helper: Helper):
 	if (ts.isObjectLiteralExpression(node)) {
 
 		let objectLikeListResolved = helper.isObjectLike(type) ? [type]
-			: helper.symbol.resolveDeclarations(type, helper.isObjectLike)
+			: [...helper.symbol.resolveTypeNodeDeclarations(type)].filter(helper.isObjectLike)
 
 		if (objectLikeListResolved && objectLikeListResolved.length > 0) {
 			let nodeMap = propertyMapOfObjectLiteral(node, helper)
@@ -64,7 +64,7 @@ function* walkMemberTypeItems(node: TS.Node, type: TS.TypeNode, helper: Helper):
 
 	// [a, b, ...c]
 	else if (ts.isArrayLiteralExpression(node)) {
-		let {list, rest} = helper.variable.decomposeArrayLiteralList(node)
+		let {list, rest} = helper.variable.splitArrayLiteral(node)
 
 		// `[T, T]`
 		if (ts.isTupleTypeNode(type)) {
@@ -87,7 +87,7 @@ function* walkMemberTypeItems(node: TS.Node, type: TS.TypeNode, helper: Helper):
 
 		// `Array<T>`
 		else if (ts.isTypeReferenceNode(type)) {
-			let name = helper.types.getTypeNodeReferenceName(type)
+			let name = helper.types.getTypeNodeReferenceName(type)?.text
 			if ((name === 'Array' || name === 'ReadonlyArray')
 				&& type.typeArguments?.length === 1
 			) {
@@ -152,7 +152,7 @@ function typeNodeMapOfObjectLikeList(objects: ObjectLike[], helper: Helper): Map
 function typeNodeMapOfObjectLike(object: ObjectLike, helper: Helper): Map<string, MemberType> {
 	let map: Map<string, MemberType> = new Map()
 
-	for (let member of helper.objectLike.walkMembers(object, true, false)) {
+	for (let member of helper.objectLike.walkMembers(object, true)) {
 		let name = member.name
 		if (!name) {
 			continue
