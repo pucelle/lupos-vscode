@@ -3,16 +3,35 @@ import {ts} from '../../../core'
 import {Helper, ObjectLike} from '../../../lupos-ts-module'
 
 
-interface MemberType{
+interface MemberType {
+
+	/** The match member, normally the parent of node. */
 	member: TS.ClassElement | TS.TypeElement
+
+	/** The match member type, represents the type of `member`. */
 	type: TS.TypeNode | undefined
+}
+
+interface PropertyItem {
+
+	/** The property name. */
+	name: TS.PropertyName
+
+	/** The property value. */
+	value: TS.Expression | TS.Identifier | undefined
 }
 
 interface MemberTypeItem {
 	node: TS.Node
+	
+	/** The match member, normally the parent of node. */
 	member: TS.ClassElement | TS.TypeElement | undefined
+
+	/** The match member type, represents the type of `member`. */
 	type: TS.TypeNode | undefined
-	possibleTypes: Map<string, MemberType>
+
+	/** Sibling member and types, for completion. */
+	possibleMembers: Map<string, MemberType>
 }
 
 
@@ -33,7 +52,7 @@ export function inferMemberType(node: TS.Identifier, rootNode: TS.Expression, ro
 
 
 function* walkMemberTypeItems(node: TS.Node, type: TS.TypeNode, helper: Helper): Iterable<MemberTypeItem> {
-	
+
 	// {a, ...}
 	if (ts.isObjectLiteralExpression(node)) {
 
@@ -45,18 +64,18 @@ function* walkMemberTypeItems(node: TS.Node, type: TS.TypeNode, helper: Helper):
 			let typeMap = typeNodeMapOfObjectLikeList(objectLikeListResolved, helper)
 
 			for (let key of nodeMap.keys()) {
-				let subNode = nodeMap.get(key)!
+				let subProp = nodeMap.get(key)!
 				let subType = typeMap.get(key)
 
 				yield {
-					node: subNode,
+					node: subProp.name,
 					type: subType?.type,
 					member: subType?.member,
-					possibleTypes: typeMap,
+					possibleMembers: typeMap,
 				}
 
-				if (subType?.type) {
-					yield* walkMemberTypeItems(subNode, subType.type, helper)
+				if (subProp.value && subType?.type) {
+					yield* walkMemberTypeItems(subProp.value, subType.type, helper)
 				}
 			}
 		}
@@ -104,8 +123,8 @@ function* walkMemberTypeItems(node: TS.Node, type: TS.TypeNode, helper: Helper):
 }
 
 
-function propertyMapOfObjectLiteral(object: TS.ObjectLiteralExpression, helper: Helper): Map<string, TS.Expression> {
-	let map: Map<string, TS.Expression> = new Map()
+function propertyMapOfObjectLiteral(object: TS.ObjectLiteralExpression, helper: Helper): Map<string, PropertyItem> {
+	let map: Map<string, PropertyItem> = new Map()
 
 	for (let prop of object.properties) {
 		let name = prop.name
@@ -114,7 +133,7 @@ function propertyMapOfObjectLiteral(object: TS.ObjectLiteralExpression, helper: 
 		}
 
 		let nameText = helper.getText(name)
-		let value: TS.Expression | undefined
+		let value: TS.Expression | TS.Identifier | undefined
 
 		// {a: 1}
 		if (ts.isPropertyAssignment(prop)) {
@@ -126,9 +145,7 @@ function propertyMapOfObjectLiteral(object: TS.ObjectLiteralExpression, helper: 
 			value = prop.name
 		}
 		
-		if (value) {
-			map.set(nameText, value)
-		}
+		map.set(nameText, {name, value})
 	}
 
 	return map

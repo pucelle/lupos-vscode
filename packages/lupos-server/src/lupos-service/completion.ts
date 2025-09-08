@@ -5,7 +5,7 @@ import {WorkSpaceAnalyzer} from './analyzer'
 import {DOMStyleProperties, DOMElementEvents, filterBooleanAttributeCompletionItems, filterDOMElementCompletionItems, CompletionItem, assignCompletionItems} from '../complete-data'
 import {Template} from '../template-service'
 import {getTemplateValueCompletionItems} from './template-value-service'
-import {makeCompletionEntryDetails, makeCompletionInfo} from './completion-translator'
+import {makeCompletionEntryDetails, makeCompletionInfo} from './helpers/completion-converter'
 
 
 /** Provide lupos completion service. */
@@ -24,9 +24,9 @@ export class LuposCompletion {
 		return makeCompletionInfo(items, part, piece)
 	}
 
-	getCompletionEntryDetails(part: TemplatePart, piece: TemplatePartPiece, template: Template, temOffset: number): TS.CompletionEntryDetails | undefined {
+	getCompletionEntryDetails(part: TemplatePart, piece: TemplatePartPiece, template: Template, temOffset: number, name: string): TS.CompletionEntryDetails | undefined {
 		let items = this.getCompletionItems(part, piece, template, temOffset)
-		return makeCompletionEntryDetails(items, part, piece)
+		return makeCompletionEntryDetails(items, part, piece, name)
 	}
 
 	protected getCompletionItems(part: TemplatePart, piece: TemplatePartPiece, template: Template, temOffset: number): CompletionItem[] {
@@ -83,7 +83,7 @@ export class LuposCompletion {
 			}
 		}
 
-		items.push(...getTemplateValueCompletionItems(part, piece, template, temOffset, this.analyzer))
+		items.push(...getTemplateValueCompletionItems(part, piece, template, temOffset, this.analyzer) ?? [])
 
 		return items
 	}

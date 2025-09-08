@@ -1,10 +1,11 @@
 import type * as TS from 'typescript'
 import {WorkSpaceAnalyzer} from './analyzer'
-import {getScriptElementKind, getSymbolDisplayPartKind} from './utils'
 import {DOMBooleanAttributes, DOMElementEvents, DOMStyleProperties, CompletionItem} from '../complete-data'
 import {TemplatePart, TemplatePartPiece, TemplatePartPieceType, isSimulatedEventName, TemplatePartType, TemplateSlotPlaceholder, LuposBindingModifiers, LuposComponentAttributes, LuposDOMEventModifiers, LuposDOMEventCategories, LuposSimulatedEvents,} from '../lupos-ts-module'
 import {Template} from '../template-service'
 import {ProjectContext} from '../core'
+import {getTemplateValueQuickInfoItem} from './template-value-service/quick-info'
+import {makeQuickInfo} from './helpers/quick-info-converter'
 
 
 interface QuickInfoItem extends CompletionItem {
@@ -23,18 +24,19 @@ export class LuposQuickInfo {
 		this.context = analyzer.context
 	}
 	
-	getQuickInfo(part: TemplatePart, piece: TemplatePartPiece, template: Template): TS.QuickInfo | undefined {
+	getQuickInfo(part: TemplatePart, piece: TemplatePartPiece, template: Template, temOffset: number): TS.QuickInfo | undefined {
+		let item: QuickInfoItem | undefined
 
 		// `<A`
 		if (part.type === TemplatePartType.Component) {
 			let component = this.analyzer.getComponentByTagName(part.node.tagName!, template)
-			return this.makeQuickInfo(component, part, piece)
+			item = component
 		}
 
 		// :xxx
 		else if (part.type === TemplatePartType.Binding) {
-			let item = this.getBindingQuickInfo(part, piece, template)
-			return this.makeQuickInfo(item, part, piece)
+			let binding = this.getBindingQuickInfo(part, piece, template)
+			item = binding
 		}
 
 		// .xxx
@@ -43,20 +45,20 @@ export class LuposQuickInfo {
 				let component = this.analyzer.getComponentByTagName(part.node.tagName!, template)
 				let property = component ? this.analyzer.getComponentProperty(component, part.mainName!) : undefined
 
-				return this.makeQuickInfo(property, part, piece)
+				item = property
 			}
 		}
 
 		// ?xxx
 		else if (part.type === TemplatePartType.QueryAttribute) {
 			let property = findBooleanAttributeQuickInfo(part.mainName!, part.node.tagName!)
-			return this.makeQuickInfo(property, part, piece)
+			item = property
 		}
 
 		// @xxx
 		else if (part.type === TemplatePartType.Event) {
 			let event = this.getEventQuickInfo(part, piece, template)
-			return this.makeQuickInfo(event, part, piece)
+			item = event
 		}
 
 		// `tagName="xxx"`
@@ -65,12 +67,19 @@ export class LuposQuickInfo {
 			&& piece.type === TemplatePartPieceType.Name
 		) {
 			let info = LuposComponentAttributes.find(item => item.name === part.mainName)
-			if (info) {
-				return this.makeQuickInfo(info, part, piece)
-			}
+			item = info
 		}
 
-		return undefined
+		// `.value=${{property}}`, goto definition for `property.`
+		if (!item) {
+			item = getTemplateValueQuickInfoItem(part, piece, template, temOffset, this.analyzer)
+		}
+
+		if (!item) {
+			return undefined
+		}
+
+		return makeQuickInfo(item, part, piece, this.context.helper)
 	}
 	
 	private getBindingQuickInfo(part: TemplatePart, piece: TemplatePartPiece, template: Template) {
@@ -175,56 +184,6 @@ export class LuposQuickInfo {
 		}
 
 		return undefined
-	}
-
-	private makeQuickInfo(item: QuickInfoItem | undefined, part: TemplatePart, piece: TemplatePartPiece): TS.QuickInfo | undefined{
-		if (!item || (!item.nameNode && !item.description)) {
-			return undefined
-		}
-
-		let helper = this.context.helper
-		let kind = getScriptElementKind(item, part, piece)
-		
-		let textSpan: TS.TextSpan = {
-			start: piece.start,
-			length: piece.end - piece.start,
-		}
-
-		let headers: TS.SymbolDisplayPart[] = []
-		let documentation: TS.SymbolDisplayPart[] = []
-
-		let headerText = piece.type === TemplatePartPieceType.TagName
-			? part.node.tagName!
-			: (part.namePrefix || '') + part.mainName!
-
-		if (part.type === TemplatePartType.Component) {
-			headerText = '<' + headerText + '>'
-		}
-		else if (item.nameNode) {
-			headerText += ': ' + helper.types.getTypeFullText(helper.types.typeOf(item.nameNode))
-		}
-
-		headers.push({
-			kind: helper.ts.SymbolDisplayPartKind[getSymbolDisplayPartKind(part, piece)],
-			text: headerText,
-		})
-
-		if (item.description) {
-			documentation.push({
-				kind: 'text',
-				text: item.description,
-			})
-		}
-
-		let info: TS.QuickInfo = {
-			kind,
-			kindModifiers: '',
-			textSpan,
-			displayParts: headers,
-			documentation,
-		}
-
-		return info
 	}
 }
 

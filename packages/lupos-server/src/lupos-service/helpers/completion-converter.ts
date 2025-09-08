@@ -1,7 +1,7 @@
 import * as TS from 'typescript'
-import {CompletionItem} from '../complete-data'
-import {getScriptElementKind} from './utils'
-import {TemplatePart, TemplatePartPiece} from '../lupos-ts-module'
+import {CompletionItem} from '../../complete-data'
+import {getScriptElementKind} from './kind'
+import {TemplatePart, TemplatePartPiece} from '../../lupos-ts-module'
 
 
 export function makeCompletionInfo(
@@ -49,17 +49,17 @@ export function makeCompletionInfo(
 }
 
 
-
 export function makeCompletionEntryDetails(
 	items: CompletionItem[],
 	part: TemplatePart,
-	piece: TemplatePartPiece
+	piece: TemplatePartPiece,
+	name: string
 ): TS.CompletionEntryDetails | undefined {
-	if (items.length === 0) {
+	let item = items.find(item => item.name === name)
+	if (!item) {
 		return undefined
 	}
 
-	let item = items[0]
 	let kind = getScriptElementKind(item, part, piece)
 
 	let displayParts = item.detail ? [{

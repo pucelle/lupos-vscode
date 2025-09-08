@@ -1,9 +1,10 @@
 import type * as TS from 'typescript'
 import {WorkSpaceAnalyzer} from './analyzer'
-import {getScriptElementKind} from './utils'
 import {Template} from '../template-service'
-import {LuposItem, TemplatePart, TemplatePartPiece, TemplatePartPieceType, TemplatePartType} from '../lupos-ts-module'
+import {TemplatePart, TemplatePartPiece, TemplatePartPieceType, TemplatePartType} from '../lupos-ts-module'
 import {ProjectContext} from '../core'
+import {DefinitionItem, makeDefinitionInfo} from './helpers/definition-converter'
+import {getTemplateValueDefinitionItem} from './template-value-service/definition'
 
 
 /** Provide lupos definition service. */
@@ -17,18 +18,19 @@ export class LuposDefinition {
 		this.context = analyzer.context
 	}
 	
-	getDefinition(part: TemplatePart, piece: TemplatePartPiece, template: Template): TS.DefinitionInfoAndBoundSpan | undefined {
+	getDefinition(part: TemplatePart, piece: TemplatePartPiece, template: Template, temOffset: number): TS.DefinitionInfoAndBoundSpan | undefined {
+		let item: DefinitionItem | undefined
 
 		// `<A`
 		if (part.type === TemplatePartType.Component) {
 			let component = this.analyzer.getComponentByTagName(part.node.tagName!, template)
-			return this.makeDefinitionInfo(component, part, piece)
+			item = component
 		}
 
 		// :xxx
 		else if (part.type === TemplatePartType.Binding) {
-			let item = this.getBindingDefinition(part, piece, template)
-			return this.makeDefinitionInfo(item, part, piece)
+			let binding = this.getBindingDefinition(part, piece, template)
+			item = binding
 		}
 
 		// .xxx
@@ -37,7 +39,7 @@ export class LuposDefinition {
 				let component = this.analyzer.getComponentByTagName(part.node.tagName!, template)
 				let property = component ? this.analyzer.getComponentProperty(component, part.mainName!) : undefined
 
-				return this.makeDefinitionInfo(property, part, piece)
+				item = property
 			}
 		}
 
@@ -46,11 +48,21 @@ export class LuposDefinition {
 			if (piece.type === TemplatePartPieceType.Name) {
 				let component = this.analyzer.getComponentByTagName(part.node.tagName!, template)
 				let event = component ? this.analyzer.getComponentEvent(component, part.mainName!) : undefined
-				return this.makeDefinitionInfo(event, part, piece)
+
+				item = event
 			}
 		}
 
-		return undefined
+		// `.value=${{property}}`, goto definition for `property.`
+		if (!item) {
+			item = getTemplateValueDefinitionItem(part, piece, template, temOffset, this.analyzer)
+		}
+
+		if (!item) {
+			return undefined
+		}
+
+		return makeDefinitionInfo(item, part, piece)
 	}
 	
 	private getBindingDefinition(part: TemplatePart, piece: TemplatePartPiece, template: Template) {
@@ -75,43 +87,5 @@ export class LuposDefinition {
 		}
 
 		return undefined
-	}
-
-	private makeDefinitionInfo(item: LuposItem | undefined, part: TemplatePart, piece: TemplatePartPiece): TS.DefinitionInfoAndBoundSpan | undefined{
-		if (!item) {
-			return undefined
-		}
-
-		let nameNode = item.nameNode
-		let name = item.name
-		let kind = getScriptElementKind(item, part, piece)
-		let fileName = nameNode.getSourceFile().fileName
-
-		let textSpan: TS.TextSpan = {
-			start: nameNode.getStart(),
-			length: nameNode.getWidth(),
-		}
-
-		let info: TS.DefinitionInfo = {
-			textSpan,
-			fileName,
-			kind,
-			name,
-			containerName: fileName,
-			containerKind: this.context.helper.ts.ScriptElementKind.scriptElement,
-		}
-
-		// Not include modifiers.
-		let length = piece.end - piece.start
-
-		let fromTextSpan = {
-			start: piece.start,
-			length,
-		}
-
-		return {
-			definitions: [info],
-			textSpan: fromTextSpan,
-		}
 	}
 }

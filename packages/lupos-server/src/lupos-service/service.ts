@@ -1,7 +1,7 @@
 import type * as TS from 'typescript'
 import {WorkSpaceAnalyzer} from './analyzer/analyzer'
 import {LuposCompletion} from './completion'
-import {LuposQuickInfo} from './quickinfo'
+import {LuposQuickInfo} from './quick-info'
 import {LuposDefinition} from './definition'
 import {ProjectContext} from '../core'
 import {Template} from '../template-service'
@@ -63,7 +63,7 @@ export class LuposService {
 		return this.completion.getCompletionInfo(part, piece, template, temOffset)
 	}
 
-	getCompletionEntryDetails(template: Template, temOffset: number): TS.CompletionEntryDetails | undefined {
+	getCompletionEntryDetails(template: Template, temOffset: number, name: string): TS.CompletionEntryDetails | undefined {
 		let part = template.getPartAt(temOffset)
 		if (!part) {
 			return undefined
@@ -76,7 +76,7 @@ export class LuposService {
 
 		this.beFresh()
 
-		return this.completion.getCompletionEntryDetails(part, piece, template, temOffset)
+		return this.completion.getCompletionEntryDetails(part, piece, template, temOffset, name)
 	}
 
 	getQuickInfo(template: Template, temOffset: number): TS.QuickInfo | undefined {
@@ -92,7 +92,7 @@ export class LuposService {
 
 		this.beFresh()
 		
-		return this.quickInfo.getQuickInfo(part, piece, template)
+		return this.quickInfo.getQuickInfo(part, piece, template, temOffset)
 	}
 
 	getDefinition(template: Template, temOffset: number): TS.DefinitionInfoAndBoundSpan | undefined {
@@ -108,7 +108,7 @@ export class LuposService {
 
 		this.beFresh()
 		
-		return this.definition.getDefinition(part, piece, template)
+		return this.definition.getDefinition(part, piece, template, temOffset)
 	}
 
 	modifyDiagnostics(template: Template, modifier: DiagnosticModifier) {

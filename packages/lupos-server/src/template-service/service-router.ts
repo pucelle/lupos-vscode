@@ -57,7 +57,7 @@ export class TemplateServiceRouter implements TemplateLanguageService {
 		let region = template.embedded.getRegionAt(temOffset)
 
 		if (region.languageId === 'html') {
-			let luposCompletionDetails = this.luposService.getCompletionEntryDetails(template, temOffset)
+			let luposCompletionDetails = this.luposService.getCompletionEntryDetails(template, temOffset, name)
 			if (luposCompletionDetails) {
 				return luposCompletionDetails
 			}
