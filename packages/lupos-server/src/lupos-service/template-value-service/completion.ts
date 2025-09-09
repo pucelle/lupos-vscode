@@ -15,17 +15,18 @@ export function getTemplateValueCompletionItems(
 	analyzer: WorkSpaceAnalyzer
 ): CompletionItem[] | undefined {
 	let helper = analyzer.helper
-	let inferred = inferTemplateValueMember(part, piece, template, temOffset, analyzer)
+	let node = template.getNodeAtOffset(temOffset)
+	let inferred = inferTemplateValueMember(part, piece, template, node, analyzer)
 
-	if (!inferred) {
-		return undefined
+	if (inferred) {
+		return getMemberCompletionItems(inferred, helper)
 	}
 
-	return getCompletionItems(inferred, helper)
+	return undefined
 }
 
 
-function getCompletionItems(inferred: TemplateValueMemberInferred, helper: Helper): CompletionItem[] | undefined {
+function getMemberCompletionItems(inferred: TemplateValueMemberInferred, helper: Helper): CompletionItem[] | undefined {
 	let {node, valueNode, valueType, template} = inferred
 	let ts = helper.ts
 

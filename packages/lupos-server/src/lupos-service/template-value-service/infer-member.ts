@@ -17,13 +17,12 @@ export function inferTemplateValueMember(
 	part: TemplatePart,
 	piece: TemplatePartPiece,
 	template: Template,
-	temOffset: number,
+	node: TS.Node | undefined,
 	analyzer: WorkSpaceAnalyzer
 ): TemplateValueMemberInferred | null {
 	let helper = analyzer.helper
 	let ts = helper.ts
 
-	let node = template.getNodeAtOffset(temOffset)
 	if (!node || !ts.isIdentifier(node)) {
 		return null
 	}
