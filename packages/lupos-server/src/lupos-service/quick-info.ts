@@ -1,7 +1,7 @@
 import type * as TS from 'typescript'
 import {WorkSpaceAnalyzer} from './analyzer'
 import {DOMBooleanAttributes, DOMElementEvents, DOMStyleProperties, CompletionItem} from '../complete-data'
-import {TemplatePart, TemplatePartPiece, TemplatePartPieceType, isSimulatedEventName, TemplatePartType, TemplateSlotPlaceholder, LuposBindingModifiers, LuposComponentAttributes, LuposDOMEventModifiers, LuposDOMEventCategories, LuposSimulatedEvents,} from '../lupos-ts-module'
+import {TemplatePart, TemplatePartPiece, TemplatePartPieceType, isSimulatedEventName, TemplatePartType, TemplateSlotPlaceholder, LuposBindingModifiers, LuposComponentAttributes, LuposDOMEventModifiers, LuposDOMEventCategories, LuposSimulatedEvents, LuposFlowControlTags,} from '../lupos-ts-module'
 import {Template} from '../template-service'
 import {ProjectContext} from '../core'
 import {getTemplateValueQuickInfoItem} from './template-value-service/quick-info'
@@ -31,6 +31,12 @@ export class LuposQuickInfo {
 		if (part.type === TemplatePartType.Component) {
 			let component = this.analyzer.getComponentByTagName(part.node.tagName!, template)
 			item = component
+		}
+
+		// <lu:xxx>
+		else if (part.type === TemplatePartType.FlowControl) {
+			let info = LuposFlowControlTags.find(item => item.name === part.node.tagName)
+			item = info
 		}
 
 		// :xxx

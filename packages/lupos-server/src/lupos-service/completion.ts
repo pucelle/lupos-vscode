@@ -1,5 +1,5 @@
 import type * as TS from 'typescript'
-import {TemplatePart, TemplatePartType, TemplateSlotPlaceholder, TemplatePartPiece, TemplatePartPieceType, LuposControlFlowTags, LuposBindingModifiers, LuposSimulatedEvents, LuposDOMEventModifiers, LuposDOMEventCategories, LuposComponentAttributes, getBindingModifierCompletionItems, findCompletionDataItem, filterCompletionDataItems} from '../lupos-ts-module'
+import {TemplatePart, TemplatePartType, TemplateSlotPlaceholder, TemplatePartPiece, TemplatePartPieceType, LuposFlowControlTags, LuposBindingModifiers, LuposSimulatedEvents, LuposDOMEventModifiers, LuposDOMEventCategories, LuposComponentAttributes, getBindingModifierCompletionItems, findCompletionDataItem, filterCompletionDataItems} from '../lupos-ts-module'
 import {ProjectContext, ts} from '../core'
 import {WorkSpaceAnalyzer} from './analyzer'
 import {DOMStyleProperties, DOMElementEvents, filterBooleanAttributeCompletionItems, filterDOMElementCompletionItems, CompletionItem, assignCompletionItems} from '../complete-data'
@@ -26,7 +26,7 @@ export class LuposCompletion {
 
 	getCompletionEntryDetails(part: TemplatePart, piece: TemplatePartPiece, template: Template, temOffset: number, name: string): TS.CompletionEntryDetails | undefined {
 		let items = this.getCompletionItems(part, piece, template, temOffset)
-		return makeCompletionEntryDetails(items, part, piece, name)
+		return makeCompletionEntryDetails(items, part, piece, template, name, this.analyzer)
 	}
 
 	protected getCompletionItems(part: TemplatePart, piece: TemplatePartPiece, template: Template, temOffset: number): CompletionItem[] {
@@ -37,17 +37,27 @@ export class LuposCompletion {
 		// p.node = null
 		// Logger.log(p)
 
-		// `<a`, `<`, `<A`, `<lu:`
+		// `<a`, `<`, `<A`, `<lu:`.
+		// Mix them because `<` can match both component and flow control.
 		if (part.type === TemplatePartType.Component
 			|| part.type === TemplatePartType.DynamicComponent
 			|| part.type === TemplatePartType.FlowControl
 			|| part.type === TemplatePartType.SlotTag
 			|| part.type === TemplatePartType.NormalStartTag
 		) {
-			let components = this.analyzer.getComponentsForCompletion(part.node.tagName || '')
-			let flowControlItems = filterCompletionDataItems(LuposControlFlowTags, part.node.tagName || '')
+			if (part.type === TemplatePartType.Component
+				|| part.type === TemplatePartType.NormalStartTag && !part.node.tagName
+			) {
+				let components = this.analyzer.getComponentsForCompletion(part.node.tagName || '')
+				items.push(...components)
+			}
 
-			items = [...components, ...flowControlItems]
+			if (part.type === TemplatePartType.FlowControl
+				|| part.type === TemplatePartType.NormalStartTag && !part.node.tagName
+			) {
+				let flowControlItems = filterCompletionDataItems(LuposFlowControlTags, part.node.tagName || '')
+				items.push(...flowControlItems)
+			}
 		}
 
 		// `:binding`, `?:binding`
@@ -203,7 +213,6 @@ export class LuposCompletion {
 	}
 
 	private getPropertyCompletionItems(part: TemplatePart, piece: TemplatePartPiece, template: Template): CompletionItem[] {
-		let attr = part.attr!
 		let mainName = part.mainName!
 		let items: CompletionItem[] = []
 		let helper = template.helper
@@ -217,31 +226,22 @@ export class LuposCompletion {
 
 		// `.property="|"`, complete property value.
 		else if (piece.type === TemplatePartPieceType.AttrValue) {
-			let attrValue = attr.value!
-
-			// For `<Icon .type="|">`
-			if (part.node.tagName!.includes('Icon') && mainName === 'type') {
-				let iconItems = this.analyzer.getIconsForCompletion(attrValue)
-				items.push(...iconItems)
-			}
-
+	
 			// For `.prop="a" | "b" | "c"`
-			else {
-				let component = this.analyzer.getComponentByTagName(part.node.tagName!, template)
-				let property = component ? this.analyzer.getComponentProperty(component, mainName) : null
-				if (property) {
-					let propertyType = helper.types.typeOf(property.nameNode)
-					let typeStringList = this.context.helper.types.splitUnionTypeToStringList(propertyType)
+			let component = this.analyzer.getComponentByTagName(part.node.tagName!, template)
+			let property = component ? this.analyzer.getComponentProperty(component, mainName) : null
+			if (property) {
+				let propertyType = helper.types.typeOf(property.nameNode)
+				let typeStringList = this.context.helper.types.splitUnionTypeToStringList(propertyType)
 
-					let typeItems = typeStringList.map(name => {
-						return {
-							name,
-							description: '',
-						}
-					})
+				let typeItems = typeStringList.map(name => {
+					return {
+						name,
+						description: '',
+					}
+				})
 
-					items.push(...typeItems)
-				}
+				items.push(...typeItems)
 			}
 		}
 

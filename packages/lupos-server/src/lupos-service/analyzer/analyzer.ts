@@ -1,31 +1,25 @@
 import type * as TS from 'typescript'
-import {analyzeLuposIcons, LuposIcon} from './icons'
 import {Logger, ProjectContext} from '../../core'
 import {Analyzer, LuposBinding, LuposComponent, LuposEvent, LuposProperty} from '../../lupos-ts-module'
 import {makeStartsMatchExp} from '../utils'
+import {ExportsAnalyzer} from './exports'
 
 
 export class WorkSpaceAnalyzer extends Analyzer {
 
 	readonly context: ProjectContext
-
-	/** All imported icons. */
-	private icons: Map<string, LuposIcon> = new Map()
+	readonly exports: ExportsAnalyzer
 
 	constructor(context: ProjectContext) {
 		super(context.helper)
 		this.context = context
+		this.exports = new ExportsAnalyzer(this.workspaceComponentsByFile, this.workSpaceBindingsByFile, this.context)
 	}
 
-	/** Analyze each ts source file. */
-	protected analyzeFile(sourceFile: TS.SourceFile) {
-		super.analyzeFile(sourceFile)
-
-		let icons = analyzeLuposIcons(sourceFile, this.context.helper)
-
-		for (let icon of icons) {
-			this.icons.set(icon.name, icon)
-		}
+	/** Make parsed results in given file expire. */
+	protected deleteFile(file: TS.SourceFile) {
+		super.deleteFile(file)
+		this.exports.delete(file)
 	}
 
 	/** 
@@ -188,17 +182,5 @@ export class WorkSpaceAnalyzer extends Analyzer {
 		}
 
 		return bindings
-	}
-
-
-	/** Get a icon from it's defined file name. */
-	getIcon(name: string): LuposIcon | null {
-		return this.icons.get(name) || null
-	}
-
-	/** Get a icon when it's defined file name matches label. */
-	getIconsForCompletion(label: string): LuposIcon[] {
-		let re = makeStartsMatchExp(label)
-		return [...this.icons.values()].filter(icon => re.test(icon.name))
 	}
 }

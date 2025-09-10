@@ -1,7 +1,9 @@
 import * as TS from 'typescript'
 import {CompletionItem} from '../../complete-data'
 import {getScriptElementKind} from './kind'
-import {TemplatePart, TemplatePartPiece} from '../../lupos-ts-module'
+import {TemplatePart, TemplatePartPiece, TemplatePartType} from '../../lupos-ts-module'
+import {Template} from '../../template-service'
+import {WorkSpaceAnalyzer} from '../analyzer'
 
 
 export function makeCompletionInfo(
@@ -53,11 +55,30 @@ export function makeCompletionEntryDetails(
 	items: CompletionItem[],
 	part: TemplatePart,
 	piece: TemplatePartPiece,
-	name: string
+	template: Template,
+	name: string,
+	analyzer: WorkSpaceAnalyzer
 ): TS.CompletionEntryDetails | undefined {
 	let item = items.find(item => item.name === name)
 	if (!item) {
 		return undefined
+	}
+
+	let sourceFile: TS.SourceFile | undefined
+
+	// If input `<`, may also search
+	if (part.type === TemplatePartType.Component || part.type === TemplatePartType.NormalStartTag) {
+		let component = analyzer.getComponentsForCompletion(name)?.find(c => c.name === name)
+		sourceFile = component?.sourceFile
+	}
+	else if (part.type === TemplatePartType.Binding) {
+		let binding = analyzer.getBindingsForCompletion(name)?.find(c => c.name === name)
+		sourceFile = binding?.sourceFile
+	}
+
+	let fileTextChange: TS.FileTextChanges | undefined
+	if (sourceFile) {
+		fileTextChange = analyzer.exports.getImportPathAndTextChange(name, sourceFile, template.sourceFile)?.change
 	}
 
 	let kind = getScriptElementKind(item, part, piece)
@@ -72,6 +93,11 @@ export function makeCompletionEntryDetails(
 		text: item.description,
 	}] : []
 
+	let codeAction: TS.CodeAction = {
+		description: 'Code Action Desc',
+		changes: fileTextChange ? [fileTextChange] : [],
+	}
+	
 	return {
 		name: item.name,
 		kindModifiers: kind || 'declare',
@@ -79,5 +105,6 @@ export function makeCompletionEntryDetails(
 		displayParts,
 		documentation,
 		tags: [],
+		codeActions: [codeAction]
 	}
 }
