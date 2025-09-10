@@ -1,8 +1,7 @@
 <h1 align="left">
-    <img src="https://github.com/pucelle/lupos-vscode/raw/master/images/logo.png" width="32" height="32" alt="Lupos Logo" />
+    <img src="https://github.com/pucelle/lupos-vscode/blob/master/images/logo.png?raw=true" width="32" height="32" alt="Lupos Logo" />
     VSCode Lupos
 </h1>
-
 
 This plugin provides syntax highlighting and IntelliSense for Tagged Template in [lupos.js](https://github.com/pucelle/lupos.js).
 
