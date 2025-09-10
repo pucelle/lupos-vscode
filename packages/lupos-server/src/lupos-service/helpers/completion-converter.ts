@@ -18,11 +18,13 @@ export function makeCompletionInfo(
 		let start = item.start ?? piece.start + (part.namePrefix?.length ?? 0)
 		let end = item.end ?? piece.end
 
-		let sourceFile = getImportSourceFile(part, item.name, analyzer)
 		let importPath: string | undefined
-
-		if (sourceFile) {
-			importPath = analyzer.exports.getBestImportPath(item.name, sourceFile, template.sourceFile)
+		let ref = template.getReferenceByName(item.name)
+		if (!ref) {
+			let sourceFile = getImportSourceFile(part, item.name, analyzer)
+			if (sourceFile) {
+				importPath = analyzer.exports.getBestImportPath(item.name, sourceFile, template.sourceFile)
+			}
 		}
 
 		let replacementSpan: TS.TextSpan = {
@@ -74,15 +76,18 @@ export function makeCompletionEntryDetails(
 		return undefined
 	}
 
-	let sourceFile = getImportSourceFile(part, name, analyzer)
 	let importPath: string | undefined
 	let fileTextChange: TS.FileTextChanges | undefined
 
-	if (sourceFile) {
-		let changeAndPath = analyzer.exports.getImportPathAndTextChange(name, sourceFile, template.sourceFile)
-		if (changeAndPath) {
-			importPath = changeAndPath.importPath
-			fileTextChange = changeAndPath.fileTextChange
+	let ref = template.getReferenceByName(item.name)
+	if (!ref) {
+		let sourceFile = getImportSourceFile(part, name, analyzer)
+		if (sourceFile) {
+			let changeAndPath = analyzer.exports.getImportPathAndTextChange(name, sourceFile, template.sourceFile)
+			if (changeAndPath) {
+				importPath = changeAndPath.importPath
+				fileTextChange = changeAndPath.fileTextChange
+			}
 		}
 	}
 
@@ -98,10 +103,10 @@ export function makeCompletionEntryDetails(
 		text: item.description,
 	}] : []
 
-	let codeAction: TS.CodeAction = {
+	let codeAction: TS.CodeAction | undefined = importPath ? {
 		description: `Add import from "${importPath}"`,
 		changes: fileTextChange ? [fileTextChange] : [],
-	}
+	} : undefined
 
 	return {
 		name: item.name,
@@ -110,7 +115,7 @@ export function makeCompletionEntryDetails(
 		displayParts,
 		documentation,
 		tags: [],
-		codeActions: [codeAction]
+		codeActions: codeAction ? [codeAction] : undefined,
 	}
 }
 
