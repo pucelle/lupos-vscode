@@ -9,14 +9,21 @@ import {WorkSpaceAnalyzer} from '../analyzer'
 export function makeCompletionInfo(
 	items: CompletionItem[],
 	part: TemplatePart,
-	piece: TemplatePartPiece
+	piece: TemplatePartPiece,
+	template: Template,
+	analyzer: WorkSpaceAnalyzer
 ): TS.CompletionInfo {
-	let names: Set<string> = new Set()
-
 	let entries: TS.CompletionEntry[] = items.map(item => {
 		let kind = getScriptElementKind(item, part, piece)
 		let start = item.start ?? piece.start + (part.namePrefix?.length ?? 0)
 		let end = item.end ?? piece.end
+
+		let sourceFile = getImportSourceFile(part, item.name, analyzer)
+		let importPath: string | undefined
+
+		if (sourceFile) {
+			importPath = analyzer.exports.getBestImportPath(item.name, sourceFile, template.sourceFile)
+		}
 
 		let replacementSpan: TS.TextSpan = {
 			start,
@@ -29,10 +36,13 @@ export function makeCompletionInfo(
 			sortText: String(item.order ?? 0),
 			insertText: item.name,
 			replacementSpan,
+			labelDetails: {description: importPath},
 		} as TS.CompletionEntry
 	})
 
 	// Filter out repetitive items.
+	let names: Set<string> = new Set()
+
 	entries = entries.filter(item => {
 		if (names.has(item.name)) {
 			return false
@@ -64,21 +74,16 @@ export function makeCompletionEntryDetails(
 		return undefined
 	}
 
-	let sourceFile: TS.SourceFile | undefined
-
-	// If input `<`, may also search
-	if (part.type === TemplatePartType.Component || part.type === TemplatePartType.NormalStartTag) {
-		let component = analyzer.getComponentsForCompletion(name)?.find(c => c.name === name)
-		sourceFile = component?.sourceFile
-	}
-	else if (part.type === TemplatePartType.Binding) {
-		let binding = analyzer.getBindingsForCompletion(name)?.find(c => c.name === name)
-		sourceFile = binding?.sourceFile
-	}
-
+	let sourceFile = getImportSourceFile(part, name, analyzer)
+	let importPath: string | undefined
 	let fileTextChange: TS.FileTextChanges | undefined
+
 	if (sourceFile) {
-		fileTextChange = analyzer.exports.getImportPathAndTextChange(name, sourceFile, template.sourceFile)?.change
+		let changeAndPath = analyzer.exports.getImportPathAndTextChange(name, sourceFile, template.sourceFile)
+		if (changeAndPath) {
+			importPath = changeAndPath.importPath
+			fileTextChange = changeAndPath.fileTextChange
+		}
 	}
 
 	let kind = getScriptElementKind(item, part, piece)
@@ -94,10 +99,10 @@ export function makeCompletionEntryDetails(
 	}] : []
 
 	let codeAction: TS.CodeAction = {
-		description: 'Code Action Desc',
+		description: `Add import from "${importPath}"`,
 		changes: fileTextChange ? [fileTextChange] : [],
 	}
-	
+
 	return {
 		name: item.name,
 		kindModifiers: kind || 'declare',
@@ -107,4 +112,26 @@ export function makeCompletionEntryDetails(
 		tags: [],
 		codeActions: [codeAction]
 	}
+}
+
+
+export function getImportSourceFile(
+	part: TemplatePart,
+	name: string,
+	analyzer: WorkSpaceAnalyzer
+): TS.SourceFile | undefined {
+
+	let sourceFile: TS.SourceFile | undefined
+
+	// If input `<`, may also search
+	if (part.type === TemplatePartType.Component || part.type === TemplatePartType.NormalStartTag) {
+		let component = analyzer.getComponentsForCompletion(name)?.find(c => c.name === name)
+		sourceFile = component?.sourceFile
+	}
+	else if (part.type === TemplatePartType.Binding) {
+		let binding = analyzer.getBindingsForCompletion(name)?.find(c => c.name === name)
+		sourceFile = binding?.sourceFile
+	}
+
+	return sourceFile
 }

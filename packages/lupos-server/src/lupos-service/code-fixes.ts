@@ -51,13 +51,13 @@ export class LuposCodeFixes {
 			return undefined
 		}
 
-		let change = changeAndPath.change
+		let fileTextChange = changeAndPath.fileTextChange
 		let importPath = changeAndPath.importPath
 
 		return [{
 			fixName: `Update import`,
 			description: `Update import from "${importPath}"`,
-			changes: [change],
+			changes: [fileTextChange],
 		}]
 	}
 
@@ -75,7 +75,7 @@ export class LuposCodeFixes {
 			return undefined
 		}
 
-		let change = changeAndPath.change
+		let change = changeAndPath.fileTextChange
 		let importPath = changeAndPath.importPath
 
 		return [{

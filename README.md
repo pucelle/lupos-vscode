@@ -3,6 +3,7 @@
 This plugin provides syntax highlighting and IntelliSense for Tagged Template in [lupos.js](https://github.com/pucelle/lupos.js).
 
 
+
 ## Features
 
 For Lupos Template Literal, this plugin provides:
@@ -15,11 +16,13 @@ For Lupos Template Literal, this plugin provides:
 - Quick Fix for import missing
 
 
-## Install and Debugging
+
+## Development and Debugging
 
 Before running, call `npm run link` to link server part to `node_modules`.
 
 If wanting to debug server part, please follow comments in `packages/lupos-server/src/core/logger.ts`.
+
 
 
 ## Not provided, but plan to
@@ -29,6 +32,7 @@ If wanting to debug server part, please follow comments in `packages/lupos-serve
 - Validate tag not rightly match or closed. e.g., `</div`.
 - Can find reference and rename `<Com>` or `:binding`, properties and event names.
 - Decorates a variable or property to describe whether it is observed.
+
 
 
 ## More About

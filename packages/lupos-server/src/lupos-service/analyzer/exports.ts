@@ -135,8 +135,8 @@ export class ExportsAnalyzer {
 	}
 
 	/** Get text edit for import a specified member from a source file. */
-	getImportPathAndTextChange(memberName: string, fromSourceFile: TS.SourceFile, targetSourceFile: TS.SourceFile): {
-		change: TS.FileTextChanges
+	getImportPathAndTextChange(memberName: string, targetSourceFile: TS.SourceFile, fromSourceFile: TS.SourceFile): {
+		fileTextChange: TS.FileTextChanges
 		importPath: string
 	} | undefined {
 		let importPath = this.getBestImportPath(memberName, targetSourceFile, fromSourceFile)
@@ -144,19 +144,19 @@ export class ExportsAnalyzer {
 			return undefined
 		}
 
-		let change = this.makeTextChange(memberName, importPath, targetSourceFile)
-		if (!change) {
+		let fileTextChange = this.makeTextChange(memberName, importPath, fromSourceFile)
+		if (!fileTextChange) {
 			return undefined
 		}
 
 		return {
-			change,
+			fileTextChange,
 			importPath,
 		}
 	}
 
 	/** When want to import `targetSourceFile` from `fromSourceFile`, get the best import path. */
-	private getBestImportPath(memberName: string, fromSourceFile: TS.SourceFile, targetSourceFile: TS.SourceFile): string | undefined {
+	getBestImportPath(memberName: string, targetSourceFile: TS.SourceFile, fromSourceFile: TS.SourceFile): string | undefined {
 		let targetFilePath = targetSourceFile.fileName
 		let fromFilePath = fromSourceFile.fileName
 		let fromDirPath = path.dirname(fromFilePath)
@@ -169,6 +169,11 @@ export class ExportsAnalyzer {
 		// Import from linked `flit` module.
 		else if (targetFilePath.includes('pucelle/flit') && !fromFilePath.includes('pucelle/flit')) {
 			return '@pucelle/flit'
+		}
+
+		// Import from linked `lupos.js` module.
+		else if (targetFilePath.includes('pucelle/lupos.js') && !fromFilePath.includes('pucelle/lupos.js')) {
+			return '@pucelle/lupos.js'
 		}
 
 		// Import from relative path.
@@ -221,9 +226,9 @@ export class ExportsAnalyzer {
 		}
 	}
 
-	private makeTextChange(memberName: string, importPath: string, targetSourceFile: TS.SourceFile): TS.FileTextChanges | undefined {
+	private makeTextChange(memberName: string, importPath: string, fromSourceFile: TS.SourceFile): TS.FileTextChanges | undefined {
 		let helper = this.context.helper
-		let existingImport = this.context.helper.imports.getImportFromModule(importPath, targetSourceFile)
+		let existingImport = this.context.helper.imports.getImportFromModule(importPath, fromSourceFile)
 		let start: number
 		let insertText: string
 
@@ -244,7 +249,7 @@ export class ExportsAnalyzer {
 				let spaces = ' '
 
 				if (lastSpecifier.getFullStart() < lastSpecifier.getStart()) {
-					let text = targetSourceFile.text
+					let text = fromSourceFile.text
 					spaces = text.slice(lastSpecifier.getFullStart(), lastSpecifier.getStart())
 				}
 
@@ -257,7 +262,7 @@ export class ExportsAnalyzer {
 			}
 		}
 		else {
-			let nodeAfterLastStatement = targetSourceFile.statements.find(stat => !ts.isImportDeclaration(stat))
+			let nodeAfterLastStatement = fromSourceFile.statements.find(stat => !ts.isImportDeclaration(stat))
 			let importText = `import {${memberName}} from '${importPath}'`
 
 			if (nodeAfterLastStatement) {
@@ -271,7 +276,7 @@ export class ExportsAnalyzer {
 		}
 
 		return {
-			fileName: targetSourceFile.fileName,
+			fileName: fromSourceFile.fileName,
 			textChanges: [{
 				span: {
 					start,

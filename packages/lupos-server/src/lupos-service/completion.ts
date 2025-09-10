@@ -21,7 +21,7 @@ export class LuposCompletion {
 
 	getCompletionInfo(part: TemplatePart, piece: TemplatePartPiece, template: Template, temOffset: number): TS.CompletionInfo {
 		let items = this.getCompletionItems(part, piece, template, temOffset)
-		return makeCompletionInfo(items, part, piece)
+		return makeCompletionInfo(items, part, piece, template, this.analyzer)
 	}
 
 	getCompletionEntryDetails(part: TemplatePart, piece: TemplatePartPiece, template: Template, temOffset: number, name: string): TS.CompletionEntryDetails | undefined {
