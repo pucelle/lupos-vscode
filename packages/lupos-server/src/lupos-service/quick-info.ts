@@ -24,7 +24,7 @@ export class LuposQuickInfo {
 		this.context = analyzer.context
 	}
 	
-	getQuickInfo(part: TemplatePart, piece: TemplatePartPiece, template: Template, temOffset: number): TS.QuickInfo | undefined {
+	getQuickInfo(part: TemplatePart, piece: TemplatePartPiece, template: Template, gloOffset: number): TS.QuickInfo | undefined {
 		let item: QuickInfoItem | undefined
 
 		// `<A`
@@ -78,7 +78,7 @@ export class LuposQuickInfo {
 
 		// `.value=${{property}}`, goto definition for `property.`
 		if (!item) {
-			item = getTemplateValueQuickInfoItem(part, piece, template, temOffset, this.analyzer)
+			item = getTemplateValueQuickInfoItem(part, piece, template, gloOffset, this.analyzer)
 		}
 
 		if (!item) {

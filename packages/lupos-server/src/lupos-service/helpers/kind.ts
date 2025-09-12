@@ -30,18 +30,18 @@ export function getScriptElementKind(
 		
 		case TemplatePartType.SlotTag:
 		case TemplatePartType.NormalStartTag:
-
-			// For `<|`
-			if (!part.node.tagName) {
-				if (TemplateSlotPlaceholder.isComponent(item.name)) {
-					return ts.ScriptElementKind.classElement
-				}
-				else if (item.name.startsWith('lu:')) {
-					return ts.ScriptElementKind.keyword
-				}
-			}
-
 			return ts.ScriptElementKind.string
+
+		case TemplatePartType.EmptyStartTag:
+			if (TemplateSlotPlaceholder.isComponent(item.name)) {
+				return ts.ScriptElementKind.classElement
+			}
+			else if (item.name.startsWith('lu:')) {
+				return ts.ScriptElementKind.keyword
+			}
+			else {
+				return ts.ScriptElementKind.string
+			}
 		
 		case TemplatePartType.Binding:
 			if (piece.type === TemplatePartPieceType.Name) {

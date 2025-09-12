@@ -11,11 +11,11 @@ export function getTemplateValueQuickInfoItem(
 	part: TemplatePart,
 	piece: TemplatePartPiece,
 	template: Template,
-	temOffset: number,
+	gloOffset: number,
 	analyzer: WorkSpaceAnalyzer
 ): QuickInfoItem | undefined {
 	let helper = analyzer.helper
-	let node = template.getNodeAtOffset(temOffset)
+	let node = template.getNodeAtOffset(gloOffset)
 	let inferred = inferTemplateValueMember(part, piece, template, node, analyzer)
 	
 	if (!inferred) {

@@ -11,11 +11,11 @@ export function getTemplateValueCompletionItems(
 	part: TemplatePart,
 	piece: TemplatePartPiece,
 	template: Template,
-	temOffset: number,
+	gloOffset: number,
 	analyzer: WorkSpaceAnalyzer
 ): CompletionItem[] | undefined {
 	let helper = analyzer.helper
-	let node = template.getNodeAtOffset(temOffset)
+	let node = template.getNodeAtOffset(gloOffset)
 	let inferred = inferTemplateValueMember(part, piece, template, node, analyzer)
 
 	if (inferred) {
@@ -43,8 +43,8 @@ function getMemberCompletionItems(inferred: TemplateValueMemberInferred, helper:
 	let lowerNodeText = helper.getText(node).toLowerCase()
 	let items: CompletionItem[] = []
 
-	for (let [key, mt] of memberType.possibleMembers) {
-		let lowerKey = key.toLowerCase()
+	for (let [name, mt] of memberType.possibleMembers) {
+		let lowerKey = name.toLowerCase()
 
 		if (!lowerKey.startsWith(lowerNodeText)) {
 			continue
@@ -52,18 +52,18 @@ function getMemberCompletionItems(inferred: TemplateValueMemberInferred, helper:
 
 		let type = mt.type ? helper.types.typeOfTypeNode(mt.type) : undefined
 		let typeText = type ? helper.types.getTypeFullText(type) : 'any'
-		let detail = `${typeText}`
+		let detail = `${name}: ${typeText}`
 		let description = helper.getNodeDescription(mt.member) ?? ''
 		let start = template.globalOffsetToLocal(node.getStart())
 		let end = template.globalOffsetToLocal(node.getEnd())
 
 		let item: CompletionItem = {
-			name: key,
-			detail,
-			description,
+			name: name,
 			kind: ts.ScriptElementKind.memberVariableElement,
 			start,
-			end
+			end,
+			detail,
+			description,
 		}
 
 		items.push(item)

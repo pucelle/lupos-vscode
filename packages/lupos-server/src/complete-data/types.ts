@@ -2,22 +2,8 @@ import type * as TS from 'typescript'
 
 
 export interface CompletionItem extends CompletionDataItem {
+
 	readonly name: string
-
-	/** 
-	 * After name, normally type info.
-	 * Only show it in entry detail.
-	 */
-	readonly detail?: string
-
-	/** 
-	 * Description text, like documentation.
-	 * Only show it in entry detail.
-	 */
-	readonly description: string
-
-	/** Decide sort order, normally default value is `0`. */
-	readonly order?: number
 
 	/** Custom completion kind. */
 	readonly kind?: TS.ScriptElementKind
@@ -27,4 +13,31 @@ export interface CompletionItem extends CompletionDataItem {
 
 	/** The completion end position in template origin. */
 	readonly end?: number
+
+	/** Decide sort order, normally default value is `0`. */
+	readonly order?: number
+
+	/** 
+	 * After name, normally type info.
+	 * Only get showed it in info.
+	 */
+	readonly infoDetail?: string
+
+	/** 
+	 * After name and info description, normally short description.
+	 * Only get showed it in info.
+	 */
+	readonly infoDescription?: string
+
+	/** 
+	 * Detail, normally detailed type info or header.
+	 * Only get showed it in entry detail.
+	 */
+	readonly detail?: string
+
+	/** 
+	 * Description text, like documentation.
+	 * Only get showed it in entry detail.
+	 */
+	readonly description: string
 }

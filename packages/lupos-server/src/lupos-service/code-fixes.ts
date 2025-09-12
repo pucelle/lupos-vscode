@@ -46,12 +46,11 @@ export class LuposCodeFixes {
 		}
 
 		let changeAndPath = this.analyzer.exports.getImportPathAndTextChange(component.name, component.sourceFile, template.sourceFile)
-
 		if (!changeAndPath) {
 			return undefined
 		}
 
-		let fileTextChange = changeAndPath.fileTextChange
+		let fileTextChange = changeAndPath.textChange
 		let importPath = changeAndPath.importPath
 
 		return [{
@@ -70,12 +69,11 @@ export class LuposCodeFixes {
 		}
 
 		let changeAndPath = this.analyzer.exports.getImportPathAndTextChange(binding.name, binding.sourceFile, template.sourceFile)
-
 		if (!changeAndPath) {
 			return undefined
 		}
 
-		let change = changeAndPath.fileTextChange
+		let change = changeAndPath.textChange
 		let importPath = changeAndPath.importPath
 
 		return [{

@@ -6,6 +6,11 @@ import * as path from 'node:path'
 
 export type ExportedMembers = Map<string, TS.SourceFile>
 
+export interface ImportPathAndTextChange {
+	importPath: string
+	textChange: TS.FileTextChanges
+}
+
 
 /** 
  * Analyze import paths of a source file.
@@ -135,22 +140,19 @@ export class ExportsAnalyzer {
 	}
 
 	/** Get text edit for import a specified member from a source file. */
-	getImportPathAndTextChange(memberName: string, targetSourceFile: TS.SourceFile, fromSourceFile: TS.SourceFile): {
-		fileTextChange: TS.FileTextChanges
-		importPath: string
-	} | undefined {
+	getImportPathAndTextChange(memberName: string, targetSourceFile: TS.SourceFile, fromSourceFile: TS.SourceFile): ImportPathAndTextChange | undefined {
 		let importPath = this.getBestImportPath(memberName, targetSourceFile, fromSourceFile)
 		if (!importPath) {
 			return undefined
 		}
 
-		let fileTextChange = this.makeTextChange(memberName, importPath, fromSourceFile)
-		if (!fileTextChange) {
+		let textChange = this.makeTextChange(memberName, importPath, fromSourceFile)
+		if (!textChange) {
 			return undefined
 		}
 
 		return {
-			fileTextChange,
+			textChange,
 			importPath,
 		}
 	}

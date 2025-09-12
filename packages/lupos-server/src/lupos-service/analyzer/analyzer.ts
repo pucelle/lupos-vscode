@@ -1,8 +1,9 @@
 import type * as TS from 'typescript'
 import {Logger, ProjectContext} from '../../core'
-import {Analyzer, LuposBinding, LuposComponent, LuposEvent, LuposProperty} from '../../lupos-ts-module'
+import {Analyzer, LuposBinding, LuposComponent, LuposEvent, LuposProperty, TemplatePart, TemplatePartType} from '../../lupos-ts-module'
 import {makeStartsMatchExp} from '../utils'
-import {ExportsAnalyzer} from './exports'
+import {ExportsAnalyzer, ImportPathAndTextChange} from './exports'
+import {Template} from '../../template-service'
 
 
 export class WorkSpaceAnalyzer extends Analyzer {
@@ -182,5 +183,46 @@ export class WorkSpaceAnalyzer extends Analyzer {
 		}
 
 		return bindings
+	}
+
+	/** 
+	 * Get source file of part, which declared specified named component or binding.
+	 * No need to import target component or binding.
+	 */
+	getPartSourceFile(part: TemplatePart, name: string): TS.SourceFile | undefined {
+		let sourceFile: TS.SourceFile | undefined
+
+		if (part.type === TemplatePartType.Component || part.type === TemplatePartType.EmptyStartTag) {
+			let component = this.getComponentsForCompletion(name)?.find(c => c.name === name)
+			sourceFile = component?.sourceFile
+		}
+		else if (part.type === TemplatePartType.Binding) {
+			let binding = this.getBindingsForCompletion(name)?.find(c => c.name === name)
+			sourceFile = binding?.sourceFile
+		}
+
+		return sourceFile
+	}
+
+	/** Resolve for import path, normally for each completion item. */
+	resolveImportPathAndTextChange(part: TemplatePart, template: Template, name: string): ImportPathAndTextChange | undefined {
+		let sourceFile = this.getPartSourceFile(part, name)
+		if (!sourceFile) {
+			return undefined
+		}
+
+		let pathChange = this.exports.getImportPathAndTextChange(name, sourceFile, template.sourceFile)
+		return pathChange
+	}
+
+	/** Resolve for import path, normally for each completion item. */
+	resolvePartImportPath(part: TemplatePart, template: Template, name: string): string | undefined {
+		let sourceFile = this.getPartSourceFile(part, name)
+		if (!sourceFile) {
+			return undefined
+		}
+
+		let importPath = this.exports.getBestImportPath(name, sourceFile, template.sourceFile)
+		return importPath
 	}
 }

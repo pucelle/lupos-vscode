@@ -74,7 +74,7 @@ export class Template extends TemplateBasis implements OriginTranslator {
 				&& (offset === text.length || !/\w/.test(text[offset]))
 			) {
 				return {
-					type: TemplatePartType.NormalStartTag,
+					type: TemplatePartType.EmptyStartTag,
 					rawName: null,
 					namePrefix: null,
 					mainName: null,
@@ -125,9 +125,9 @@ export class Template extends TemplateBasis implements OriginTranslator {
 		return !(globalEnd < this.globalStart || globalStart > globalEnd)
 	}
 
-	/** Get node from local offset. */
-	getNodeAtOffset(localOffset: number): TS.Node | undefined {
-		return this.helper.getNodeAtOffset(this.node, this.localOffsetToGlobal(localOffset))
+	/** Get node by global offset. */
+	getNodeAtOffset(globalOffset: number): TS.Node | undefined {
+		return this.helper.getNodeAtOffset(this.node, globalOffset)
 	}
 
 	/** Test whether searching node at specified offset get value range. */

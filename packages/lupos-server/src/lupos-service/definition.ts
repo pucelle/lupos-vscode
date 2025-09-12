@@ -18,7 +18,7 @@ export class LuposDefinition {
 		this.context = analyzer.context
 	}
 	
-	getDefinition(part: TemplatePart, piece: TemplatePartPiece, template: Template, temOffset: number): TS.DefinitionInfoAndBoundSpan | undefined {
+	getDefinition(part: TemplatePart, piece: TemplatePartPiece, template: Template, gloOffset: number): TS.DefinitionInfoAndBoundSpan | undefined {
 		let item: DefinitionItem | undefined
 
 		// `<A`
@@ -55,7 +55,7 @@ export class LuposDefinition {
 
 		// `.value=${{property}}`, goto definition for `property.`
 		if (!item) {
-			item = getTemplateValueDefinitionItem(part, piece, template, temOffset, this.analyzer)
+			item = getTemplateValueDefinitionItem(part, piece, template, gloOffset, this.analyzer)
 		}
 
 		if (!item) {

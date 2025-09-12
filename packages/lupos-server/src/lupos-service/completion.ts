@@ -19,17 +19,50 @@ export class LuposCompletion {
 		this.context = analyzer.context
 	}
 
-	getCompletionInfo(part: TemplatePart, piece: TemplatePartPiece, template: Template, temOffset: number): TS.CompletionInfo {
-		let items = this.getCompletionItems(part, piece, template, temOffset)
-		return makeCompletionInfo(items, part, piece, template, this.analyzer)
+	getCompletionInfo(part: TemplatePart, piece: TemplatePartPiece, template: Template, gloOffset: number): TS.CompletionInfo {
+		let items = this.getCompletionItems(part, piece, template, gloOffset)
+
+		if (piece.type === TemplatePartPieceType.TagName) {
+			for (let i = 0; i < items.length; i++) {
+				let item = items[i]
+
+				let ref = template.getReferenceByName(item.name)
+				if (ref) {
+					continue
+				}
+
+				// Resolve for import path for each completion item.
+				let importPath = this.analyzer.resolvePartImportPath(part, template, item.name)
+				if (importPath) {
+					items[i] = {
+						...item,
+						infoDescription: importPath,
+					}
+				}
+			}
+		}
+
+		return makeCompletionInfo(items, part, piece)
 	}
 
-	getCompletionEntryDetails(part: TemplatePart, piece: TemplatePartPiece, template: Template, temOffset: number, name: string): TS.CompletionEntryDetails | undefined {
-		let items = this.getCompletionItems(part, piece, template, temOffset)
-		return makeCompletionEntryDetails(items, part, piece, template, name, this.analyzer)
+	getCompletionEntryDetails(part: TemplatePart, piece: TemplatePartPiece, template: Template, gloOffset: number, name: string): TS.CompletionEntryDetails | undefined {
+		let items = this.getCompletionItems(part, piece, template, gloOffset)
+		let item = items.find(item => item.name === name)
+		if (!item) {
+			return undefined
+		}
+
+		// When have local reference.
+		let ref = template.getReferenceByName(item.name)
+		if (ref) {
+			return undefined
+		}
+
+		let pathChange = this.analyzer.resolveImportPathAndTextChange(part, template, item.name)
+		return makeCompletionEntryDetails(item, part, piece, pathChange)
 	}
 
-	protected getCompletionItems(part: TemplatePart, piece: TemplatePartPiece, template: Template, temOffset: number): CompletionItem[] {
+	protected getCompletionItems(part: TemplatePart, piece: TemplatePartPiece, template: Template, gloOffset: number): CompletionItem[] {
 		let items: CompletionItem[] = []
 
 		// Print part
@@ -38,22 +71,19 @@ export class LuposCompletion {
 		// Logger.log(p)
 
 		// `<a`, `<`, `<A`, `<lu:`.
-		// Mix them because `<` can match both component and flow control.
 		if (part.type === TemplatePartType.Component
-			|| part.type === TemplatePartType.DynamicComponent
 			|| part.type === TemplatePartType.FlowControl
-			|| part.type === TemplatePartType.SlotTag
-			|| part.type === TemplatePartType.NormalStartTag
+			|| part.type === TemplatePartType.EmptyStartTag
 		) {
 			if (part.type === TemplatePartType.Component
-				|| part.type === TemplatePartType.NormalStartTag && !part.node.tagName
+				|| part.type === TemplatePartType.EmptyStartTag
 			) {
 				let components = this.analyzer.getComponentsForCompletion(part.node.tagName || '')
 				items.push(...components)
 			}
 
 			if (part.type === TemplatePartType.FlowControl
-				|| part.type === TemplatePartType.NormalStartTag && !part.node.tagName
+				|| part.type === TemplatePartType.EmptyStartTag
 			) {
 				let flowControlItems = filterCompletionDataItems(LuposFlowControlTags, part.node.tagName || '')
 				items.push(...flowControlItems)
@@ -93,7 +123,7 @@ export class LuposCompletion {
 			}
 		}
 
-		items.push(...getTemplateValueCompletionItems(part, piece, template, temOffset, this.analyzer) ?? [])
+		items.push(...getTemplateValueCompletionItems(part, piece, template, gloOffset, this.analyzer) ?? [])
 
 		return items
 	}

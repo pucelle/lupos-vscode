@@ -15,32 +15,37 @@ export interface TemplateLanguageService {
 
 	getCompletionsAtPosition?(
 		template: Template,
-		offset: number,
+		temOffset: number,
+		gloOffset: number,
 		options?: TS.GetCompletionsAtPositionOptions
 	): TS.CompletionInfo | undefined
 
 	getCompletionEntryDetails?(
 		template: Template,
-		offset: number,
+		temOffset: number,
+		gloOffset: number,
 		name: string,
 		options?: TS.FormatCodeSettings
 	): TS.CompletionEntryDetails | undefined
 
 	getQuickInfoAtPosition?(
 		template: Template,
-		offset: number,
+		temOffset: number,
+		gloOffset: number,
 	): TS.QuickInfo | undefined
 
 	/** Returned definition should be fit with global document. */
 	getDefinitionAtPosition?(
 		template: Template,
-		offset: number,
+		temOffset: number,
+		gloOffset: number,
 	): TS.DefinitionInfo[]
 	
 	/** Returned definition should be fit with global document. */
 	getDefinitionAndBoundSpan?(
 		template: Template,
-		offset: number,
+		temOffset: number,
+		gloOffset: number,
 	): TS.DefinitionInfoAndBoundSpan | undefined
 
 	getSyntacticDiagnostics?(
@@ -72,7 +77,8 @@ export interface TemplateLanguageService {
 
 	getSignatureHelpItemsAtPosition?(
 		template: Template,
-		offset: number,
+		temOffset: number,
+		gloOffset: number,
 		options?: TS.SignatureHelpItemsOptions
 	): TS.SignatureHelpItems | undefined
 
@@ -82,12 +88,14 @@ export interface TemplateLanguageService {
 
 	getReferencesAtPosition?(
 		template: Template,
-		offset: number,
+		temOffset: number,
+		gloOffset: number,
 	): TS.ReferencedSymbol[] | undefined
 
 	getJsxClosingTagAtPosition?(
 		template: Template,
-		offset: number,
+		temOffset: number,
+		gloOffset: number,
 	): TS.JsxClosingTagInfo | undefined
 }
 

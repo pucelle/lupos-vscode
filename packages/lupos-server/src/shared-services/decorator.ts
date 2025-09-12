@@ -94,7 +94,7 @@ export class TSLanguageServiceProxy {
 			// Replace with lupos template completion.
 			let temOffset = template.globalOffsetToLocal(gloOffset)
 			let withinValueRange = template.isWithinValueRange(temOffset)
-			let info = this.templateService.getCompletionsAtPosition!(template, temOffset, options)
+			let info = this.templateService.getCompletionsAtPosition!(template, temOffset, gloOffset, options)
 
 			if (info) {
 				info.entries.forEach(entry => this.translateTextSpan(entry.replacementSpan, template!))
@@ -129,7 +129,7 @@ export class TSLanguageServiceProxy {
 			// Replace with lupos template completion.
 			let temOffset = template.globalOffsetToLocal(gloOffset)
 			let withinValueRange = template.isWithinValueRange(temOffset)
-			let entry = this.templateService.getCompletionEntryDetails!(template, temOffset, name, options)
+			let entry = this.templateService.getCompletionEntryDetails!(template, temOffset, gloOffset, name, options)
 
 			if (withinValueRange && !entry) {
 				return callOriginal()
@@ -153,7 +153,7 @@ export class TSLanguageServiceProxy {
 			// Replace with lupos template completion.
 			let temOffset = template.globalOffsetToLocal(gloOffset)
 			let withinValueRange = template.isWithinValueRange(temOffset)
-			let info = this.templateService.getQuickInfoAtPosition!(template, temOffset)
+			let info = this.templateService.getQuickInfoAtPosition!(template, temOffset, gloOffset)
 
 			if (info) {
 				this.translateTextSpan(info.textSpan, template)
@@ -181,7 +181,7 @@ export class TSLanguageServiceProxy {
 			// Replace with template definitions.
 			let temOffset = template.globalOffsetToLocal(gloOffset)
 			let withinValueRange = template.isWithinValueRange(temOffset)
-			let definitions = this.templateService.getDefinitionAtPosition!(template, temOffset)
+			let definitions = this.templateService.getDefinitionAtPosition!(template, temOffset, gloOffset)
 
 			if (withinValueRange && definitions.length === 0) {
 				return callOriginal()
@@ -204,8 +204,9 @@ export class TSLanguageServiceProxy {
 
 			// Replace with template definitions.
 			let temOffset = template.globalOffsetToLocal(gloOffset)
+
 			let withinValueRange = template.isWithinValueRange(temOffset)
-			let definitionAndSpan = this.templateService.getDefinitionAndBoundSpan!(template, temOffset)
+			let definitionAndSpan = this.templateService.getDefinitionAndBoundSpan!(template, temOffset, gloOffset)
 
 			if (withinValueRange && (!definitionAndSpan || !definitionAndSpan.definitions || definitionAndSpan.definitions.length === 0)) {
 				return callOriginal()
@@ -344,7 +345,7 @@ export class TSLanguageServiceProxy {
 
 			let temOffset = template.globalOffsetToLocal(gloOffset)
 			let withinValueRange = template.isWithinValueRange(temOffset)
-			let items = this.templateService.getSignatureHelpItemsAtPosition!(template, temOffset, options)
+			let items = this.templateService.getSignatureHelpItemsAtPosition!(template, temOffset, gloOffset, options)
 
 			if (items) {
 				this.translateTextSpan(items.applicableSpan, template)
@@ -394,7 +395,7 @@ export class TSLanguageServiceProxy {
 
 			let temOffset = template.globalOffsetToLocal(gloOffset)
 			let withinValueRange = template.isWithinValueRange(temOffset)
-			let symbols = this.templateService.getReferencesAtPosition!(template, temOffset)
+			let symbols = this.templateService.getReferencesAtPosition!(template, temOffset, gloOffset)
 
 			if (symbols) {
 				symbols.forEach(symbol => {
@@ -440,7 +441,7 @@ export class TSLanguageServiceProxy {
 
 			let temOffset = template.globalOffsetToLocal(gloOffset)
 			let withinValueRange = template.isWithinValueRange(temOffset)
-			let info = this.templateService.getJsxClosingTagAtPosition!(template, temOffset)
+			let info = this.templateService.getJsxClosingTagAtPosition!(template, temOffset, gloOffset)
 
 			if (withinValueRange && !info) {
 				return callOriginal()

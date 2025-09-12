@@ -45,7 +45,6 @@ function getComponentPropertyMember(
 	node: TS.Identifier,
 	analyzer: WorkSpaceAnalyzer
 ): TemplateValueMemberInferred | null {
-
 	let helper = analyzer.helper
 	let mainName = part.mainName!
 	let tagName = part.node.tagName!

@@ -29,12 +29,12 @@ export class TemplateServiceRouter implements TemplateLanguageService {
 		Logger.log('Lupos Plugin Started')
 	}
 
-	getCompletionsAtPosition(template: Template, temOffset: number): TS.CompletionInfo | undefined {
+	getCompletionsAtPosition(template: Template, temOffset: number, gloOffset: number): TS.CompletionInfo | undefined {
 		let region = template.embedded.getRegionAt(temOffset)
 		let tsCompletions: TS.CompletionInfo = VS2TSTranslator.makeEmptyTSCompletion()
 
 		if (region.languageId === 'html') {
-			let luposCompletions = this.luposService.getCompletionInfo(template, temOffset)
+			let luposCompletions = this.luposService.getCompletionInfo(template, temOffset, gloOffset)
 			if (luposCompletions) {
 				tsCompletions.entries.push(...luposCompletions.entries)
 			}
@@ -53,11 +53,11 @@ export class TemplateServiceRouter implements TemplateLanguageService {
 		return tsCompletions
 	}
 
-	getCompletionEntryDetails(template: Template, temOffset: number, name: string): TS.CompletionEntryDetails | undefined {
+	getCompletionEntryDetails(template: Template, temOffset: number, gloOffset: number, name: string): TS.CompletionEntryDetails | undefined {
 		let region = template.embedded.getRegionAt(temOffset)
 
 		if (region.languageId === 'html') {
-			let luposCompletionDetails = this.luposService.getCompletionEntryDetails(template, temOffset, name)
+			let luposCompletionDetails = this.luposService.getCompletionEntryDetails(template, temOffset, gloOffset, name)
 			if (luposCompletionDetails) {
 				return luposCompletionDetails
 			}
@@ -90,14 +90,14 @@ export class TemplateServiceRouter implements TemplateLanguageService {
 		return completions
 	}
 
-	getQuickInfoAtPosition(template: Template, temOffset: number): TS.QuickInfo | undefined {
+	getQuickInfoAtPosition(template: Template, temOffset: number, gloOffset: number): TS.QuickInfo | undefined {
 		let region = template.embedded.getRegionAt(temOffset)
 		let hover: vscode.Hover | null = null
 		let regOffset = region.templateOffsetToLocal(temOffset)
 		let regPosition = region.localOffsetToPosition(regOffset)
 
 		if (region.languageId === 'html') {
-			let tsHover = this.luposService.getQuickInfo(template, temOffset)
+			let tsHover = this.luposService.getQuickInfo(template, temOffset, gloOffset)
 			if (tsHover) {
 				return tsHover
 			}
@@ -117,12 +117,12 @@ export class TemplateServiceRouter implements TemplateLanguageService {
 		return undefined
 	}
 
-	getDefinitionAndBoundSpan(template: Template, temOffset: number): TS.DefinitionInfoAndBoundSpan | undefined {
+	getDefinitionAndBoundSpan(template: Template, temOffset: number, gloOffset: number): TS.DefinitionInfoAndBoundSpan | undefined {
 		let region = template.embedded.getRegionAt(temOffset)
 		let regOffset = region.templateOffsetToLocal(temOffset)
 
 		if (region.languageId === 'html') {
-			let luposDefinitions = this.luposService.getDefinition(template, regOffset)
+			let luposDefinitions = this.luposService.getDefinition(template, regOffset, gloOffset)
 			if (luposDefinitions) {
 				return luposDefinitions
 			}
@@ -210,10 +210,10 @@ export class TemplateServiceRouter implements TemplateLanguageService {
 	}
 
 	/** Note code fixes are located in global origin. */
-	getCodeFixesAtPosition(template: Template, start: number, end: number, errorCodes: ReadonlyArray<number>): TS.CodeFixAction[] {
+	getCodeFixesAtPosition(template: Template, gloStart: number, gloEnd: number, errorCodes: ReadonlyArray<number>): TS.CodeFixAction[] {
 		let region = template.embedded.getWholeTemplateRegion()
-		let regStart = region.templateOffsetToLocal(start)
-		let regEnd = region.templateOffsetToLocal(end)
+		let regStart = region.templateOffsetToLocal(gloStart)
+		let regEnd = region.templateOffsetToLocal(gloEnd)
 		let regRange = VS2TSTranslator.makeVSRange(regStart, regEnd, region)
 
 		if (region.languageId === 'html') {
@@ -245,7 +245,7 @@ export class TemplateServiceRouter implements TemplateLanguageService {
 		return []
 	}
 
-	getReferencesAtPosition(template: Template, temOffset: number): TS.ReferencedSymbol[] | undefined {
+	getReferencesAtPosition(template: Template, temOffset: number, _gloOffset: number): TS.ReferencedSymbol[] | undefined {
 		let region = template.embedded.getRegionAt(temOffset)
 		let regPosition = region.localOffsetToPosition(region.templateOffsetToLocal(temOffset))
 		let highlights: vscode.DocumentHighlight[] | undefined
@@ -266,7 +266,8 @@ export class TemplateServiceRouter implements TemplateLanguageService {
 		return undefined
 	}
 
-	getJsxClosingTagAtPosition(template: Template, temOffset: number): TS.JsxClosingTagInfo | undefined {
+	getJsxClosingTagAtPosition(template: Template, gloOffset: number): TS.JsxClosingTagInfo | undefined {
+		let temOffset = template.globalOffsetToLocal(gloOffset)
 		let region = template.embedded.getRegionAt(temOffset)
 		let regPosition = region.localOffsetToPosition(region.templateOffsetToLocal(temOffset))
 

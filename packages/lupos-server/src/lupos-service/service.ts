@@ -47,7 +47,7 @@ export class LuposService {
 		})
 	}
 
-	getCompletionInfo(template: Template, temOffset: number): TS.CompletionInfo | undefined {
+	getCompletionInfo(template: Template, temOffset: number, gloOffset: number): TS.CompletionInfo | undefined {
 		let part = template.getPartAt(temOffset)
 		if (!part) {
 			return undefined
@@ -60,10 +60,10 @@ export class LuposService {
 
 		this.beFresh()
 
-		return this.completion.getCompletionInfo(part, piece, template, temOffset)
+		return this.completion.getCompletionInfo(part, piece, template, gloOffset)
 	}
 
-	getCompletionEntryDetails(template: Template, temOffset: number, name: string): TS.CompletionEntryDetails | undefined {
+	getCompletionEntryDetails(template: Template, temOffset: number, gloOffset: number, name: string): TS.CompletionEntryDetails | undefined {
 		let part = template.getPartAt(temOffset)
 		if (!part) {
 			return undefined
@@ -76,10 +76,10 @@ export class LuposService {
 
 		this.beFresh()
 
-		return this.completion.getCompletionEntryDetails(part, piece, template, temOffset, name)
+		return this.completion.getCompletionEntryDetails(part, piece, template, gloOffset, name)
 	}
 
-	getQuickInfo(template: Template, temOffset: number): TS.QuickInfo | undefined {
+	getQuickInfo(template: Template, temOffset: number, gloOffset: number): TS.QuickInfo | undefined {
 		let part = template.getPartAt(temOffset)
 		if (!part) {
 			return undefined
@@ -92,10 +92,10 @@ export class LuposService {
 
 		this.beFresh()
 		
-		return this.quickInfo.getQuickInfo(part, piece, template, temOffset)
+		return this.quickInfo.getQuickInfo(part, piece, template, gloOffset)
 	}
 
-	getDefinition(template: Template, temOffset: number): TS.DefinitionInfoAndBoundSpan | undefined {
+	getDefinition(template: Template, temOffset: number, gloOffset: number): TS.DefinitionInfoAndBoundSpan | undefined {
 		let part = template.getPartAt(temOffset)
 		if (!part) {
 			return undefined
@@ -108,7 +108,7 @@ export class LuposService {
 
 		this.beFresh()
 		
-		return this.definition.getDefinition(part, piece, template, temOffset)
+		return this.definition.getDefinition(part, piece, template, gloOffset)
 	}
 
 	modifyDiagnostics(template: Template, modifier: DiagnosticModifier) {
