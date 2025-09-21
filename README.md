@@ -3,7 +3,7 @@
     VSCode Lupos
 </h1>
 
-This vscode plugin provides Syntax Highlighting and IntelliSense for Tagged Template in [lupos.js](https://github.com/pucelle/lupos.js).
+This vscode plugin provides Syntax Highlighting and IntelliSense for Tagged Template in [lupos.js](https://github.com/pucelle/lupos.js) and  in [lupos.paint](https://github.com/pucelle/lupos.paint).
 
 
 
@@ -22,7 +22,7 @@ For Lupos Template Literal, this plugin provides:
 
 ## Development and Debugging
 
-Before running, call `npm run link` to link server part to `node_modules`.
+Before running, call `npm run link` (only work in Windows) to link server part to `node_modules`.
 
 If wanting to debug server part, please follow comments in `packages/lupos-server/src/core/logger.ts`.
 
@@ -31,10 +31,10 @@ If wanting to debug server part, please follow comments in `packages/lupos-serve
 ## Not provided, but plan to
 
 - `>${...}<` slot content completion. Now can only complete for object properties.
-- Validate circular references. I believe this should be superior hard.
+- Validate circular references. I believe this should be superior difficult.
 - Validate tag not rightly matched or closed. e.g., `</div`.
 - Can find reference and rename `<Com>` or `:binding`, properties and event names.
-- Decorates a variable or property to describe whether it is observed.
+- Decorates a variable or property to describe whether it gets observed.
 
 
 
