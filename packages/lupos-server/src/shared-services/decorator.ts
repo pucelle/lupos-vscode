@@ -204,7 +204,6 @@ export class TSLanguageServiceProxy {
 
 			// Replace with template definitions.
 			let temOffset = template.globalOffsetToLocal(gloOffset)
-
 			let withinValueRange = template.isWithinValueRange(temOffset)
 			let definitionAndSpan = this.templateService.getDefinitionAndBoundSpan!(template, temOffset, gloOffset)
 

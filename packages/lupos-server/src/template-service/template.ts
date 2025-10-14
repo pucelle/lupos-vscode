@@ -52,11 +52,6 @@ export class Template extends TemplateBasis implements OriginTranslator {
 		this.parts.push(part)
 	}
 
-	/** Get all the parts of template. */
-	getAllParts(): TemplatePart[] {
-		return this.parts
-	}
-
 	/** Get slot at specified position. */
 	getPartAt(temOffset: number): TemplatePart | undefined {
 		let part = this.findPartAt(temOffset)

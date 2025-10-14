@@ -113,7 +113,7 @@ export class LuposService {
 
 	modifyDiagnostics(template: Template, modifier: DiagnosticModifier) {
 		this.beFresh()
-		this.diagnostics.diagnose(template.getAllParts(), template, modifier)
+		this.diagnostics.diagnose(template.parts, template, modifier)
 	}
 
 	getCodeFixesAtPosition(template: Template, temOffset: number, errorCodes: ReadonlyArray<number>): TS.CodeFixAction[] | undefined {
