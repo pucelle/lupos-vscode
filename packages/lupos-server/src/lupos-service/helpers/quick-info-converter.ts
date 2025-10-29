@@ -33,6 +33,9 @@ export function makeQuickInfo(item: QuickInfoItem | undefined, part: TemplatePar
 	else if (piece.type === TemplatePartPieceType.AttrValue) {
 		headerText = item.name
 	}
+	else if (piece.type === TemplatePartPieceType.Modifier) {
+		headerText = '.' + item.name
+	}
 	else {
 		headerText = (part.namePrefix || '') + part.mainName!
 	}
