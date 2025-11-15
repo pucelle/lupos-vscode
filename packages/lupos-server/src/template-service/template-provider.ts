@@ -56,11 +56,23 @@ export class TemplateProvider {
 		}
 
 		// Check tag name is allowed.
-		if (!PluginConfig.tags.includes(taggedNode.tag.getText())) {
+		if (!this.isConfiguredTagName(taggedNode.tag)) {
 			return null
 		}
 
 		return taggedNode
+	}
+
+	/** Test whether be `html, css, svg` tag. */
+	private isConfiguredTagName(tag: TS.Expression): boolean {
+		let text = tag.getText()
+		let lastPart = text.match(/\w+$/)?.[0]
+
+		if (!lastPart || !PluginConfig.tags.includes(lastPart)) {
+			return false
+		}
+
+		return this.context.helper.symbol.isImportedFrom(tag, lastPart, '@pucelle/lupos.js')
 	}
 
 	private createTemplate(taggedNode: TS.TaggedTemplateExpression) {
@@ -84,7 +96,7 @@ export class TemplateProvider {
 		}
 
 		let taggedNodes = this.context.helper.findAllInward(sourceFile, ts.isTaggedTemplateExpression)
-		taggedNodes = taggedNodes.filter(node => PluginConfig.tags.includes(node.tag.getText()))
+		taggedNodes = taggedNodes.filter(node => this.isConfiguredTagName(node.tag))
 
 		return taggedNodes.map(node => this.createTemplate(node))
 	}

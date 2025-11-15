@@ -1,6 +1,6 @@
 import type * as TS from 'typescript'
 import {Logger, ProjectContext} from '../../core'
-import {Analyzer, LuposBinding, LuposComponent, LuposEvent, LuposProperty, TemplatePart, TemplatePartType} from '../../lupos-ts-module'
+import {Analyzer, LuposBinding, LuposComponent, LuposEvent, LuposKnownInternalBindings, LuposProperty, TemplatePart, TemplatePartType} from '../../lupos-ts-module'
 import {makeStartsMatchExp} from '../utils'
 import {ExportsAnalyzer, ImportPathAndTextChange} from './exports'
 import {Template} from '../../template-service'
@@ -206,6 +206,12 @@ export class WorkSpaceAnalyzer extends Analyzer {
 
 	/** Resolve for import path, normally for each completion item. */
 	resolveImportPathAndTextChange(part: TemplatePart, template: Template, name: string): ImportPathAndTextChange | undefined {
+		if (part.type === TemplatePartType.Binding) {
+			if (LuposKnownInternalBindings[name]) {
+				return undefined
+			}
+		}
+
 		let sourceFile = this.getPartSourceFile(part, name)
 		if (!sourceFile) {
 			return undefined

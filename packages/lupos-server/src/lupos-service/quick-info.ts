@@ -185,7 +185,12 @@ export class LuposQuickInfo {
 			// `@keydown.Enter`, `@click.left`.
 			if (LuposDOMEventCategories[mainName]) {
 				let category = LuposDOMEventCategories[mainName]
-				return findQuickInfoItem(LuposDOMEventModifiers[category], mainName)
+				return findQuickInfoItem(LuposDOMEventModifiers[category], piece.name)
+			}
+
+			// `@click.prevent`.
+			else {
+				return findQuickInfoItem(LuposDOMEventModifiers.global, piece.name)
 			}
 		}
 
