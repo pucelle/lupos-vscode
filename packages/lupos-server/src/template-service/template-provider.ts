@@ -72,7 +72,7 @@ export class TemplateProvider {
 			return false
 		}
 
-		return this.context.helper.symbol.isImportedFrom(tag, lastPart, '@pucelle/lupos.js')
+		return this.context.helper.symbol.isImportedFrom(tag, lastPart, 'lupos.html')
 	}
 
 	private createTemplate(taggedNode: TS.TaggedTemplateExpression) {

@@ -168,16 +168,6 @@ export class ExportsAnalyzer {
 			return targetFilePath.match(/\/node_modules\/((?:@[^\/]+\/)?[^\/]+)/)?.[1]
 		}
 
-		// Import from linked `flit` module.
-		else if (targetFilePath.includes('pucelle/flit') && !fromFilePath.includes('pucelle/flit')) {
-			return '@pucelle/flit'
-		}
-
-		// Import from linked `lupos.js` module.
-		else if (targetFilePath.includes('pucelle/lupos.js') && !fromFilePath.includes('pucelle/lupos.js')) {
-			return '@pucelle/lupos.js'
-		}
-
 		// Import from relative path.
 		else {
 			let relativePath = path.relative(fromDirPath, targetFilePath).replace(/\\/g, '/')
@@ -213,14 +203,6 @@ export class ExportsAnalyzer {
 				let memberMap = this.analyze(sourceFile)
 				if (memberMap.has(memberName)) {
 					availablePath = relativePath
-				}
-			}
-
-			// If have `pucelle` after relative, get the module name after `pucelle`.
-			if (availablePath.includes('/pucelle/')) {
-				let pucelleModuleName = availablePath.match(/\/pucelle\/([^\/]+)/)?.[1]
-				if (pucelleModuleName) {
-					return '@pucelle/' + pucelleModuleName
 				}
 			}
 
