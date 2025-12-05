@@ -3,7 +3,7 @@
     VSCode Lupos
 </h1>
 
-This vscode plugin provides Syntax Highlighting and IntelliSense for Tagged Template in [lupos.js](https://github.com/pucelle/lupos.js) and  in [lupos.paint](https://github.com/pucelle/lupos.paint).
+This vscode plugin provides Syntax Highlighting and IntelliSense for Tagged Template in [lupos.html](https://github.com/pucelle/lupos.html) and  in [lupos.paint](https://github.com/pucelle/lupos.paint).
 
 
 

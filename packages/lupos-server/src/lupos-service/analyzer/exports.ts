@@ -168,8 +168,24 @@ export class ExportsAnalyzer {
 			return targetFilePath.match(/\/node_modules\/((?:@[^\/]+\/)?[^\/]+)/)?.[1]
 		}
 
+		// Import from linked `ff-uix` module.
+		else if (targetFilePath.includes('ff-uix') && !fromFilePath.includes('ff-uix')) {
+			return 'ff-uix'
+		}
+
+		// Import from linked `lupos.html` module.
+		else if (targetFilePath.includes('lupos.html') && !fromFilePath.includes('lupos.html')) {
+			return 'lupos.html'
+		}
+
+		// Import from linked `lupos.graph` module.
+		else if (targetFilePath.includes('lupos.graph') && !fromFilePath.includes('lupos.graph')) {
+			return 'lupos.graph'
+		}
+
 		// Import from relative path.
 		else {
+			
 			let relativePath = path.relative(fromDirPath, targetFilePath).replace(/\\/g, '/')
 
 			// Absolute path, ignores it.
