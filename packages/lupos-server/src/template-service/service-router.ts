@@ -40,13 +40,15 @@ export class TemplateServiceRouter implements TemplateLanguageService {
 			}
 		}
 
-		let regOffset = region.templateOffsetToLocal(temOffset)
-		let regPosition = region.localOffsetToPosition(regOffset)
-		let vsRegionCompletions = this.getVSCodeCompletionItems(region, regPosition)
-		if (vsRegionCompletions) {
-			let completions = VS2TSTranslator.translateVSCompletionToTS(vsRegionCompletions, region)
-			if (completions) {
-				tsCompletions.entries.push(...completions.entries)
+		if (!template.isWithinValueRange(temOffset)) {
+			let regOffset = region.templateOffsetToLocal(temOffset)
+			let regPosition = region.localOffsetToPosition(regOffset)
+			let vsRegionCompletions = this.getHTMLAndCSSCompletionItems(region, regPosition)
+			if (vsRegionCompletions) {
+				let completions = VS2TSTranslator.translateVSCompletionToTS(vsRegionCompletions, region)
+				if (completions) {
+					tsCompletions.entries.push(...completions.entries)
+				}
 			}
 		}
 
@@ -63,19 +65,21 @@ export class TemplateServiceRouter implements TemplateLanguageService {
 			}
 		}
 
-		let regOffset = region.templateOffsetToLocal(temOffset)
-		let regPosition = region.localOffsetToPosition(regOffset)
-		let vsCompletions = this.getVSCodeCompletionItems(region, regPosition)
+		if (!template.isWithinValueRange(temOffset)) {
+			let regOffset = region.templateOffsetToLocal(temOffset)
+			let regPosition = region.localOffsetToPosition(regOffset)
+			let vsCompletions = this.getHTMLAndCSSCompletionItems(region, regPosition)
 
-		let item = vsCompletions?.items.find(x => x.label === name)
-		if (item) {
-			return VS2TSTranslator.translateVSCompletionToEntryDetailsToTS(item)
+			let item = vsCompletions?.items.find(x => x.label === name)
+			if (item) {
+				return VS2TSTranslator.translateVSCompletionToEntryDetailsToTS(item)
+			}
 		}
 
 		return undefined
 	}
 
-	private getVSCodeCompletionItems(region: TemplateEmbeddedRegion, position: TS.LineAndCharacter) {
+	private getHTMLAndCSSCompletionItems(region: TemplateEmbeddedRegion, position: TS.LineAndCharacter) {
 		let completions: vscode.CompletionList | undefined
 
 		if (region.languageId === 'html') {
