@@ -14,9 +14,6 @@ type LanguageServiceWrapper<K extends keyof TS.LanguageService>
 		? (callOriginal: () => R, ...args: A) => R
 		: never
 
-/** Get value of object. */
-type ValueOf<O> = O[keyof O]
-
 
 /** 
  * It proxies a language service,
@@ -53,23 +50,20 @@ export class TSLanguageServiceProxy {
 
 	/** Decorate with low level typescript language service. */
 	decorate(): TS.LanguageService {
-		let rawLanguageService = this.context.service
-		let wrappedService: Map<keyof TS.LanguageService, ValueOf<TS.LanguageService>> = new Map()
+		let rawLanguageService = this.context.service as any
 
+		// Directly overwrite property, not use Proxy any more.
+		// Or will have conflict with other plugins like Vue.
 		for (let {name, wrapper} of this.wrappers) {
-			wrappedService.set(name, (...args: any[]) => {
-				let rawServiceFn = (rawLanguageService as any)[name]
-				let callOriginal = () => rawServiceFn(...args)
+			let rawServiceFn = rawLanguageService[name]
 
+			rawLanguageService[name] = (...args: any[]) => {
+				let callOriginal = () => rawServiceFn(...args)
 				return wrapper(callOriginal, ...args)
-			})
+			}
 		}
 
-		return new Proxy(rawLanguageService, {
-			get: (target: any, property: keyof TS.LanguageService) => {
-				return wrappedService.get(property) ?? target[property]
-			},
-		})
+		return rawLanguageService
 	}
 
 	/** Wrap with a interpolated service function. */
