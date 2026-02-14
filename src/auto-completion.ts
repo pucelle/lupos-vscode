@@ -1,5 +1,5 @@
 import * as vscode from 'vscode'
-import {isTypeScriptLanguage} from './utils'
+import {isInsideTemplateSyntax, isLineStartTagButNotEnd, isTypeScriptLanguage} from './utils'
 
 
 interface AutoInsertingItem {
@@ -15,14 +15,9 @@ interface AutoInsertingItem {
 }
 
 // May upgrade to `auto replacing items` to be more magic.
-const AutoInsertingItems: AutoInsertingItem[] = [
+const AutoInsertedItems: AutoInsertingItem[] = [
 	{
-		leftChar: '=',
-		cursorOffset: 1,
-		insert: '{}',
-	},
-	{
-		leftChar: '>',
+		leftChar: '$',
 		cursorOffset: 1,
 		insert: '{}',
 	}
@@ -38,27 +33,42 @@ export function autoCompletion(event: vscode.TextDocumentChangeEvent): void {
 		return
 	}
 
-	if (isTypeScriptLanguage(event.document.languageId) && event.contentChanges[0].text === '$') {
-		autoInsertTemplateSlot()
+	if (!isTypeScriptLanguage(event.document.languageId)) {
+		return
 	}
+
+	let start = event.contentChanges[0].rangeOffset
+	let insertText = event.contentChanges[0].text
+
+	if (!insertText) {
+		return
+	}
+
+	autoInsertTemplateSlot(start, insertText)
 }
 
 
 /** Insert some characters when match. */
-async function autoInsertTemplateSlot() {
+async function autoInsertTemplateSlot(start: number, insertedText: string) {
 	let editor = vscode.window.activeTextEditor
+
+	// Not in typing recently.
 	if (!editor) {
 		return
 	}
 
 	// Cursor is here: `=|$`.
 	let document = editor.document
-	let selection = editor.selection
+	let textBefore = document.getText().slice(0, start)
 
-	for (let {leftChar, insert, cursorOffset} of AutoInsertingItems) {
-		let char = getPreviousNonEmptyChar(document, selection.active)
-		if (char === leftChar) {
-			let insertPosition = selection.active.translate(0, 1)
+	// Must within template literal.
+	if (!isInsideTemplateSyntax(textBefore)) {
+		return
+	}
+
+	for (let {leftChar, insert, cursorOffset} of AutoInsertedItems) {
+		if (leftChar === insertedText) {
+			let insertPosition = document.positionAt(start + 1)
 
 			// Insert `{}` after `=$`.
 			await editor.edit(editBuilder => {
@@ -69,32 +79,33 @@ async function autoInsertTemplateSlot() {
 			let cursorPosition = insertPosition.translate(0, cursorOffset)
 			editor.selection = new vscode.Selection(cursorPosition, cursorPosition)
 
-			break
+			return
 		}
 	}
-}
 
-
-/** Try get previous non-empty char. */
-function getPreviousNonEmptyChar(document: vscode.TextDocument, position: vscode.Position): string | undefined {
-	let offset = document.offsetAt(position)
+	let position = document.positionAt(start)
+	let line = document.lineAt(position).text
 	
-	for (let i = offset - 1; i >= 0; i--) {
-		let p = document.positionAt(i)
-		let line = document.lineAt(p).text
-
-		// At the end of line.
-		if (p.character >= line.length) {
-			continue
-		}
-
-		let char = line[p.character]
-		
-		if (!/\s/.test(char)) {
-			return char
-		}
+	if (isLineStartTagButNotEnd(line)) {
+		return
 	}
 
-	return undefined
+	let tagIndentCount = line.match(/^\t+/)![0].length
+	let insertIndentCount = insertedText.match(/\t+/)?.[0]?.length ?? 0
+
+	if (insertIndentCount <= tagIndentCount) {
+		let insertTab = '\t'.repeat(insertIndentCount + 1 - tagIndentCount)
+		let insertTabPosition = document.positionAt(start + insertedText.length)
+
+		// Insert new tabs after inserted text.
+		await editor.edit(editBuilder => {
+			editBuilder.insert(insertTabPosition, insertTab)
+		})
+
+		// Moves cursor to after tabs.
+		let cursorPosition = insertTabPosition.translate(0, insertTab.length)
+		editor.selection = new vscode.Selection(cursorPosition, cursorPosition)
+	}
 }
+
 
