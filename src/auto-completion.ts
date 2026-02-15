@@ -86,7 +86,8 @@ async function autoInsertTemplateSlot(start: number, insertedText: string) {
 	let position = document.positionAt(start)
 	let line = document.lineAt(position).text
 	
-	if (isLineStartTagButNotEnd(line)) {
+	// `<...`, no `>`
+	if (!isLineStartTagButNotEnd(line)) {
 		return
 	}
 

@@ -18,5 +18,5 @@ export function isInsideTemplateSyntax(textBefore: string): boolean {
 
 /** Test whether starts with `<`, but not end. */
 export function isLineStartTagButNotEnd(line: string) {
-	return /^\t+<\w[^>]*?$/.test(line.trim())
+	return /^\t+<\w[^>]*?$/.test(line)
 }
