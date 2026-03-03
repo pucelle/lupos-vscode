@@ -83,30 +83,51 @@ async function autoInsertTemplateSlot(start: number, insertedText: string) {
 		}
 	}
 
-	let position = document.positionAt(start)
-	let line = document.lineAt(position).text
-	
-	// `<...`, no `>`
-	if (!isLineStartTagButNotEnd(line)) {
-		return
-	}
+	if (insertedText.startsWith('\n')) {
+			
+		// Insert char end offset, also start of old chars.
+		let end = start + insertedText.length
+		let position = document.positionAt(start)
+		let startLine = document.lineAt(position).text
+		
+		// Input `\n` inside a `<...>`, add a tab to the new line.
+		if (isLineStartTagButNotEnd(startLine)) {
+			let tagIndentCount = startLine.match(/^\t+/)![0].length
+			let insertIndentCount = insertedText.match(/\t+/)?.[0]?.length ?? 0
 
-	let tagIndentCount = line.match(/^\t+/)![0].length
-	let insertIndentCount = insertedText.match(/\t+/)?.[0]?.length ?? 0
+			if (insertIndentCount <= tagIndentCount) {
+				let insertTab = '\t'.repeat(insertIndentCount + 1 - tagIndentCount)
+				let insertTabPosition = document.positionAt(start + insertedText.length)
 
-	if (insertIndentCount <= tagIndentCount) {
-		let insertTab = '\t'.repeat(insertIndentCount + 1 - tagIndentCount)
-		let insertTabPosition = document.positionAt(start + insertedText.length)
+				// Insert new tabs after inserted text.
+				await editor.edit(editBuilder => {
+					editBuilder.insert(insertTabPosition, insertTab)
+				})
 
-		// Insert new tabs after inserted text.
-		await editor.edit(editBuilder => {
-			editBuilder.insert(insertTabPosition, insertTab)
-		})
+				// Moves cursor to after tabs.
+				let cursorPosition = insertTabPosition.translate(0, insertTab.length)
+				editor.selection = new vscode.Selection(cursorPosition, cursorPosition)
+			}
+		}
 
-		// Moves cursor to after tabs.
-		let cursorPosition = insertTabPosition.translate(0, insertTab.length)
-		editor.selection = new vscode.Selection(cursorPosition, cursorPosition)
+		// Input `\n` before a `>` or `/>`, eat a tab.
+		else {
+			let charsAfter = document.getText().slice(end, end + 2)
+			if (charsAfter[0] === '>' || charsAfter === '/>') {
+				let endLine = document.lineAt(document.positionAt(end)).text
+				let tagIndentCount = endLine.match(/^\t+/)![0].length
+
+				if (tagIndentCount > 0) {
+					let endPosition = document.positionAt(end)
+					let startPosition = document.positionAt(end - 1)
+					let range = new vscode.Range(startPosition, endPosition)
+
+					// Delete a tab after inserted text.
+					await editor.edit(editBuilder => {
+						editBuilder.delete(range)
+					})
+				}
+			}
+		}
 	}
 }
-
-
