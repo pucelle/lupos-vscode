@@ -1,7 +1,7 @@
 {
 	"name": "lupos-vscode",
 	"displayName": "VScode Lupos",
-	"description": "Syntax highlighting and IntelliSense for Tagged Template of 'lupos.js'",
+	"description": "Syntax highlighting and IntelliSense for Tagged Template of 'lupos' series",
 	"icon": "images/logo.png",
 	"version": "1.1.0",
 	"publisher": "pucelle",
