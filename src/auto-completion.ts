@@ -88,11 +88,11 @@ async function autoInsertTemplateSlot(start: number, insertedText: string) {
 		// Insert char end offset, also start of old chars.
 		let end = start + insertedText.length
 		let position = document.positionAt(start)
-		let startLine = document.lineAt(position).text
+		let tagStartLine = getPreviousTagStartLine(position, document)
 		
 		// Input `\n` inside a `<...>`, add a tab to the new line.
-		if (isLineStartTagButNotEnd(startLine)) {
-			let tagIndentCount = startLine.match(/^\t+/)![0].length
+		if (tagStartLine) {
+			let tagIndentCount = tagStartLine.match(/^\t+/)![0].length
 			let insertIndentCount = insertedText.match(/\t+/)?.[0]?.length ?? 0
 
 			if (insertIndentCount <= tagIndentCount) {
@@ -110,10 +110,11 @@ async function autoInsertTemplateSlot(start: number, insertedText: string) {
 			}
 		}
 
-		// Input `\n` before a `>` or `/>`, eat a tab.
+		// Input `\n` before `/>`, eat a tab.
 		else {
 			let charsAfter = document.getText().slice(end, end + 2)
-			if (charsAfter[0] === '>' || charsAfter === '/>') {
+			if (charsAfter === '/>') {
+
 				let endLine = document.lineAt(document.positionAt(end)).text
 				let tagIndentCount = endLine.match(/^\t+/)![0].length
 
@@ -130,4 +131,21 @@ async function autoInsertTemplateSlot(start: number, insertedText: string) {
 			}
 		}
 	}
+}
+
+function getPreviousTagStartLine(position: vscode.Position, document: vscode.TextDocument): string | null {
+	let startLine = document.lineAt(position).text
+
+	if (isLineStartTagButNotEnd(startLine)) {
+		return startLine
+	}
+	
+	if (/^\s*$/.test(startLine) && position.line > 0) {
+		let previousLine = document.lineAt(position.line - 1).text
+		if (isLineStartTagButNotEnd(previousLine)) {
+			return previousLine
+		}
+	}
+	
+	return null
 }
