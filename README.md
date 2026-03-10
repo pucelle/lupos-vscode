@@ -35,6 +35,7 @@ If wanting to debug server part, please follow comments in `packages/lupos-serve
 - Validate tag not rightly matched or closed. e.g., `</div`.
 - Can find reference and rename `<Com>` or `:binding`, properties and event names.
 - Decorates a variable or property to describe whether it gets observed.
+- Diagnose for one render function can only return one only `<template>`.
 
 
 
