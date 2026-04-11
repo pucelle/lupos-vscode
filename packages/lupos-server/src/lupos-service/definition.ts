@@ -66,7 +66,6 @@ export class LuposDefinition {
 	}
 	
 	private getBindingDefinition(part: TemplatePart, piece: TemplatePartPiece, template: Template) {
-		let attr = part.attr!
 		let mainName = part.mainName!
 
 		// `:name|`, complete binding name.
@@ -75,17 +74,6 @@ export class LuposDefinition {
 			return binding
 		}
 		
-		// If `:slot="|"`.
-		else if (piece.type === TemplatePartPieceType.Modifier) {
-			if (mainName === 'slot') {
-				let attrValue = attr.value!
-				let component = this.analyzer.getComponentByTagName(part.node.tagName!, template)
-				let property = component ? this.analyzer.getComponentSubProperties(component, 'slotElements', attrValue) : undefined
-
-				return property
-			}
-		}
-
 		return undefined
 	}
 }

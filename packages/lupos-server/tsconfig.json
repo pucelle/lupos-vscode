@@ -2,7 +2,7 @@
     "compilerOptions": {
         "module": "CommonJS",
 		"moduleResolution": "Node",
-		"target": "ES2022",
+		"target": "ES2024",
 		"lib": ["ESNext", "DOM", "DOM.Iterable"],
 		"rootDir": "src",
 		"outDir": "out",
@@ -14,7 +14,8 @@
 		"noImplicitReturns": true,
 		"noFallthroughCasesInSwitch": true,
 		"noImplicitAny": true,
-		"noImplicitThis": true
+		"noImplicitThis": true,
+		"noImplicitOverride": true
     },
     "exclude": [
         "node_modules",

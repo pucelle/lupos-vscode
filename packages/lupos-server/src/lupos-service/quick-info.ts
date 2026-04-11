@@ -102,11 +102,6 @@ export class LuposQuickInfo {
 			return this.getBindingModifierQuickInfo(part, piece)
 		}
 
-		// `:slot="|"`.
-		else if (piece.type === TemplatePartPieceType.AttrValue) {
-			return this.getBindingAttrValueQuickInfo(part, template)
-		}
-
 		return undefined
 	}
 
@@ -136,23 +131,6 @@ export class LuposQuickInfo {
 			if (modifierItems) {
 				return findQuickInfoItem(modifierItems, modifierValue)
 			}
-		}
-
-		return undefined
-	}
-
-	// `:slot="|"`.
-	private getBindingAttrValueQuickInfo(part: TemplatePart, template: Template) {
-		let attr = part.attr!
-		let mainName = part.mainName!
-		let attrValue = attr.value!
-
-		// :slot="|name"
-		if (['slot'].includes(mainName) && template.component) {
-			let currentComponent = this.analyzer.getComponentByDeclaration(template.component)!
-			let propertyItems = this.analyzer.getSubPropertiesForCompletion(currentComponent, 'slotElements', attrValue)
-
-			return findQuickInfoItem(propertyItems, attrValue)
 		}
 
 		return undefined

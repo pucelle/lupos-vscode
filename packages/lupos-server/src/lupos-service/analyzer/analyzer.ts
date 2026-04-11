@@ -18,7 +18,7 @@ export class WorkSpaceAnalyzer extends Analyzer {
 	}
 
 	/** Make parsed results in given file expire. */
-	protected deleteFile(file: TS.SourceFile) {
+	protected override deleteFile(file: TS.SourceFile) {
 		super.deleteFile(file)
 		this.exports.delete(file)
 	}
@@ -123,26 +123,6 @@ export class WorkSpaceAnalyzer extends Analyzer {
 
 		return [...properties.values()]
 	}
-
-	/** 
-	 * Get all refs or slots properties outer class declaration contains given node.
-	 * `label` can be empty, then will return all properties.
-	 */
-	getSubPropertiesForCompletion(component: LuposComponent, propertyName: 'slotElements', subPropertyNameLabel: string): LuposProperty[] {
-		let properties: Map<string, LuposProperty> = new Map()
-		let re = makeStartsMatchExp(subPropertyNameLabel)
-
-		for (let com of this.walkComponents(component)) {
-			for (let property of Object.values(com[propertyName])) {
-				if (re.test(property.name) && !properties.has(property.name)) {
-					properties.set(property.name, property)
-				}
-			}
-		}
-
-		return [...properties.values()]
-	}
-
 	
 	/** 
 	 * Get events for component, and name starts with label.

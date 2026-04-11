@@ -145,11 +145,6 @@ export class LuposCompletion {
 			items.push(...this.getBindingModifierCompletionItems(part, piece, template))
 		}
 
-		// `:slot="|"`.
-		else if (piece.type === TemplatePartPieceType.AttrValue) {
-			items.push(...this.getBindingAttrValueCompletionItems(part, template))
-		}
-
 		// Completion of `:class` will be handled by `CSS Navigation` plugin.
 
 		return items
@@ -209,24 +204,6 @@ export class LuposCompletion {
 		}
 
 		// Completion of `:class` will be handled by `CSS Navigation` plugin.
-
-		return items
-	}
-
-	// `:slot="|"`.
-	private getBindingAttrValueCompletionItems(part: TemplatePart, template: Template): CompletionItem[] {
-		let attr = part.attr!
-		let mainName = part.mainName!
-		let attrValue = attr.value!
-		let items: CompletionItem[] = []
-
-		// :slot="|name"
-		if (['slot'].includes(mainName) && template.component) {
-			let currentComponent = this.analyzer.getComponentByDeclaration(template.component)!
-			let propertyItems = this.analyzer.getSubPropertiesForCompletion(currentComponent, 'slotElements', attrValue)
-
-			items.push(...propertyItems)
-		}
 
 		return items
 	}
