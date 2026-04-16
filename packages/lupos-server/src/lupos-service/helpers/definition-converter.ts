@@ -1,4 +1,4 @@
-import type * as TS from 'typescript'
+import type TS from 'typescript'
 import {getScriptElementKind} from './kind'
 import {TemplatePart, TemplatePartPiece} from '../../lupos-ts-module'
 import {ts} from '../../core'

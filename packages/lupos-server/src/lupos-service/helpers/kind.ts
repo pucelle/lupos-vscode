@@ -1,7 +1,7 @@
 import {CompletionItem} from '../../complete-data'
 import {ts} from '../../core'
 import {TemplatePart, TemplatePartPiece, TemplatePartPieceType, TemplatePartType, TemplateSlotPlaceholder} from '../../lupos-ts-module'
-import type * as TS from 'typescript'
+import type TS from 'typescript'
 import {DefinitionItem} from './definition-converter'
 import {QuickInfoItem} from './quick-info-converter'
 

@@ -2,7 +2,7 @@
 // Inspired from https://github.com/microsoft/typescript-template-language-service-decorator
 
 
-import type * as TS from 'typescript'
+import type TS from 'typescript'
 import {Template, TemplateProvider, TemplateLanguageService, TemplateServiceRouter} from '../template-service'
 import {ProjectContext, ts} from '../core'
 import {DiagnosticModifier} from '../lupos-ts-module'

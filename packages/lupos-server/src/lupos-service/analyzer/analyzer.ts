@@ -1,4 +1,4 @@
-import type * as TS from 'typescript'
+import type TS from 'typescript'
 import {Logger, ProjectContext} from '../../core'
 import {Analyzer, LuposBinding, LuposComponent, LuposEvent, LuposKnownInternalBindings, LuposProperty, TemplatePart, TemplatePartType} from '../../lupos-ts-module'
 import {makeStartsMatchExp} from '../utils'
@@ -185,7 +185,7 @@ export class WorkSpaceAnalyzer extends Analyzer {
 	}
 
 	/** Resolve for import path, normally for each completion item. */
-	resolveImportPathAndTextChange(part: TemplatePart, template: Template, name: string): ImportPathAndTextChange | undefined {
+	resolveBestImportPathAndTextChange(part: TemplatePart, template: Template, name: string): ImportPathAndTextChange | undefined {
 		if (part.type === TemplatePartType.Binding) {
 			if (LuposKnownInternalBindings[name]) {
 				return undefined
@@ -197,18 +197,18 @@ export class WorkSpaceAnalyzer extends Analyzer {
 			return undefined
 		}
 
-		let pathChange = this.exports.getImportPathAndTextChange(name, sourceFile, template.sourceFile)
-		return pathChange
+		let pathChanges = this.exports.getImportPathAndTextChangeList(name, sourceFile, template.sourceFile)
+		return pathChanges[0]
 	}
 
 	/** Resolve for import path, normally for each completion item. */
-	resolvePartImportPath(part: TemplatePart, template: Template, name: string): string | undefined {
+	resolveBestPartImportPath(part: TemplatePart, template: Template, name: string): string | undefined {
 		let sourceFile = this.getPartSourceFile(part, name)
 		if (!sourceFile) {
 			return undefined
 		}
 
-		let importPath = this.exports.getBestImportPath(name, sourceFile, template.sourceFile)
-		return importPath
+		let importPaths = this.exports.getImportPaths(name, sourceFile, template.sourceFile)
+		return importPaths[0]
 	}
 }

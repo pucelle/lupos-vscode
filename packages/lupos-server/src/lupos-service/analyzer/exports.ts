@@ -1,4 +1,4 @@
-import type * as TS from 'typescript'
+import type TS from 'typescript'
 import {ListMap, LuposBinding, LuposComponent} from '../../lupos-ts-module'
 import {ProjectContext, ts} from '../../core'
 import * as path from 'node:path'
@@ -139,91 +139,87 @@ export class ExportsAnalyzer {
 		return this.context.program.getSourceFile(path.normalize(targetPath).replace(/\\/g, '/'))
 	}
 
-	/** Get text edit for import a specified member from a source file. */
-	getImportPathAndTextChange(memberName: string, targetSourceFile: TS.SourceFile, fromSourceFile: TS.SourceFile): ImportPathAndTextChange | undefined {
-		let importPath = this.getBestImportPath(memberName, targetSourceFile, fromSourceFile)
-		if (!importPath) {
-			return undefined
+	/** Get text edits for import a specified member from a source file. */
+	getImportPathAndTextChangeList(memberName: string, targetSourceFile: TS.SourceFile, fromSourceFile: TS.SourceFile): ImportPathAndTextChange[] {
+		let list: ImportPathAndTextChange[] = []
+		let importPaths = this.getImportPaths(memberName, targetSourceFile, fromSourceFile)
+
+		if (importPaths.length === 0) {
+			return list
 		}
 
-		let textChange = this.makeTextChange(memberName, importPath, fromSourceFile)
-		if (!textChange) {
-			return undefined
+		for (let importPath of importPaths) {
+			let textChange = this.makeTextChange(memberName, importPath, fromSourceFile)
+			if (textChange) {
+				list.push({
+					textChange,
+					importPath,
+				})
+			}
 		}
 
-		return {
-			textChange,
-			importPath,
-		}
+		return list
 	}
 
 	/** When want to import `targetSourceFile` from `fromSourceFile`, get the best import path. */
-	getBestImportPath(memberName: string, targetSourceFile: TS.SourceFile, fromSourceFile: TS.SourceFile): string | undefined {
-		let targetFilePath = targetSourceFile.fileName
+	getImportPaths(memberName: string, targetSourceFile: TS.SourceFile, fromSourceFile: TS.SourceFile): string[] {
 		let fromFilePath = fromSourceFile.fileName
-		let fromDirPath = path.dirname(fromFilePath)
+		let targetFilePath = targetSourceFile.fileName
+		let availablePaths = this.getRelativeImportPaths(memberName, targetFilePath, fromFilePath)
 
 		// Import from node_modules
 		if (targetFilePath.includes('/node_modules/')) {
-			return targetFilePath.match(/\/node_modules\/((?:@[^\/]+\/)?[^\/]+)/)?.[1]
+			let moduleName = targetFilePath.match(/\/node_modules\/((?:@[^\/]+\/)?[^\/]+)/)?.[1]
+			if (moduleName) {
+				availablePaths.push(moduleName)
+			}
 		}
 
-		// Import from linked `ff-uix` module.
-		else if (targetFilePath.includes('ff-uix') && !fromFilePath.includes('ff-uix')) {
-			return 'ff-uix'
+		return availablePaths
+	}
+
+	private getRelativeImportPaths(memberName: string, targetFilePath: string, fromFilePath: string): string[] {
+		let fromDirPath = path.dirname(fromFilePath)
+		let relativePath = path.relative(fromDirPath, targetFilePath).replace(/\\/g, '/')
+		let availablePaths: string[] = []
+
+		// Absolute path, ignores it.
+		if (path.isAbsolute(relativePath)) {
+			return []
 		}
 
-		// Import from linked `lupos.html` module.
-		else if (targetFilePath.includes('lupos.html') && !fromFilePath.includes('lupos.html')) {
-			return 'lupos.html'
+		// Import path must starts with `./`.
+		if (!relativePath.startsWith('.')) {
+			relativePath = './' + relativePath
 		}
 
-		// Import from linked `lupos.graph` module.
-		else if (targetFilePath.includes('lupos.graph') && !fromFilePath.includes('lupos.graph')) {
-			return 'lupos.graph'
-		}
+		let availablePath = relativePath.replace(/(?:\/index)?(?:\.d)?\.ts$/, '')
+		availablePaths.push(availablePath)
 
-		// Import from relative path.
-		else {
-			
-			let relativePath = path.relative(fromDirPath, targetFilePath).replace(/\\/g, '/')
-
-			// Absolute path, ignores it.
-			if (path.isAbsolute(relativePath)) {
-				return undefined
+		let relativePathPieces = relativePath.split('/')
+		
+		// From longer relative path to shorter.
+		for (let i = relativePathPieces.length - 2; i >= 0; i--) {
+			let piece = relativePathPieces[i]
+			if (piece === '..' || piece === '.') {
+				break
 			}
 
-			// Import path must starts with `./`.
-			if (!relativePath.startsWith('.')) {
-				relativePath = './' + relativePath
+			let relativePath = relativePathPieces.slice(0, i + 1).join('/')
+			let absolutePath = path.join(fromDirPath, relativePath)
+			let sourceFile = this.resolveSourceFile(absolutePath)
+
+			if (!sourceFile) {
+				continue
 			}
 
-			let relativePathPieces = relativePath.split('/')
-			let availablePath = relativePath.replace(/(?:\/index)?(?:\.d)?\.ts$/, '')
-
-			// From longer relative path to shorter.
-			for (let i = relativePathPieces.length - 2; i >= 0; i--) {
-				let piece = relativePathPieces[i]
-				if (piece === '..' || piece === '.') {
-					break
-				}
-
-				let relativePath = relativePathPieces.slice(0, i + 1).join('/')
-				let absolutePath = path.join(fromDirPath, relativePath)
-				let sourceFile = this.resolveSourceFile(absolutePath)
-
-				if (!sourceFile) {
-					continue
-				}
-
-				let memberMap = this.analyze(sourceFile)
-				if (memberMap.has(memberName)) {
-					availablePath = relativePath
-				}
+			let memberMap = this.analyze(sourceFile)
+			if (memberMap.has(memberName)) {
+				availablePaths.push(relativePath)
 			}
-
-			return availablePath
 		}
+
+		return availablePaths
 	}
 
 	private makeTextChange(memberName: string, importPath: string, fromSourceFile: TS.SourceFile): TS.FileTextChanges | undefined {

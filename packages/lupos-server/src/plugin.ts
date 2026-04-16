@@ -1,4 +1,4 @@
-import type * as TS from 'typescript'
+import type TS from 'typescript'
 import {Logger, setGlobalContext, ProjectContext} from './core'
 import {helperOfContext} from './lupos-ts-module'
 import {TSLanguageServiceProxy} from './shared-services/decorator'

@@ -1,4 +1,4 @@
-import type * as TS from 'typescript'
+import type TS from 'typescript'
 import * as vscode from 'vscode-languageserver-types'
 import {VS2TSTranslator} from './vs-ts-translator'
 import {LuposService} from '../lupos-service'

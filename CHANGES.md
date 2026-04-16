@@ -1,5 +1,14 @@
 # Changes
 
+# 1.1.2
+
+- Prefers importing components or bindings  from relative path.
+
+
+# 1.1.1
+
+- Removes support for `:slot`.
+
 
 # 1.1.0
 

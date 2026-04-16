@@ -1,4 +1,4 @@
-import type * as TS from 'typescript'
+import type TS from 'typescript'
 import {ProjectContext} from '../core'
 import {TemplateBasis, TemplatePartParser, TemplatePart, TemplatePartType, ScopeTree, TemplateSlotPlaceholder, HTMLRoot} from '../lupos-ts-module'
 import {TemplateEmbeddedRegions} from './embedded-regions'

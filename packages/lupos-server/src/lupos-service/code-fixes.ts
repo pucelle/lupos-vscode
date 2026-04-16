@@ -1,4 +1,4 @@
-import type * as TS from 'typescript'
+import type TS from 'typescript'
 import {WorkSpaceAnalyzer} from './analyzer'
 import {DiagnosticCode, TemplatePart, TemplatePartPiece, TemplatePartPieceType, TemplatePartType} from '../lupos-ts-module'
 import {Template} from '../template-service'
@@ -21,7 +21,7 @@ export class LuposCodeFixes {
 		// `<A`
 		if (part.type === TemplatePartType.Component) {
 			if (errorCodes.includes(DiagnosticCode.MissingImportOrDeclaration)) {
-				return this.getCodeFixOfComponent(part, template)
+				return this.getCodeFixesForComponent(part, template)
 			}
 		}
 
@@ -30,14 +30,14 @@ export class LuposCodeFixes {
 			if (piece.type === TemplatePartPieceType.Name
 				&& errorCodes.includes(DiagnosticCode.MissingImportOrDeclaration)
 			) {
-				return this.getCodeFixOfBinding(part, template)
+				return this.getCodeFixForBinding(part, template)
 			}
 		}
 
 		return undefined
 	}
 	
-	private getCodeFixOfComponent(part: TemplatePart, template: Template): TS.CodeFixAction[] | undefined {
+	private getCodeFixesForComponent(part: TemplatePart, template: Template): TS.CodeFixAction[] | undefined {
 		let tagName = part.node.tagName!
 		
 		let component = this.analyzer.getWorkspaceComponentByName(tagName)
@@ -45,22 +45,16 @@ export class LuposCodeFixes {
 			return undefined
 		}
 
-		let changeAndPath = this.analyzer.exports.getImportPathAndTextChange(component.name, component.sourceFile, template.sourceFile)
-		if (!changeAndPath) {
-			return undefined
-		}
+		let changeAndPathList = this.analyzer.exports.getImportPathAndTextChangeList(component.name, component.sourceFile, template.sourceFile)
 
-		let fileTextChange = changeAndPath.textChange
-		let importPath = changeAndPath.importPath
-
-		return [{
-			fixName: `Update import`,
-			description: `Update import from "${importPath}"`,
-			changes: [fileTextChange],
-		}]
+		return changeAndPathList.map(({textChange, importPath}) => ({
+			fixName: `Add import`,
+			description: `Add import from "${importPath}"`,
+			changes: [textChange],
+		}))
 	}
 
-	private getCodeFixOfBinding(part: TemplatePart, template: Template): TS.CodeFixAction[] | undefined {
+	private getCodeFixForBinding(part: TemplatePart, template: Template): TS.CodeFixAction[] | undefined {
 		let mainName = part.mainName!
 		let binding = this.analyzer.getWorkspaceBindingByName(mainName)
 
@@ -68,18 +62,15 @@ export class LuposCodeFixes {
 			return undefined
 		}
 
-		let changeAndPath = this.analyzer.exports.getImportPathAndTextChange(binding.name, binding.sourceFile, template.sourceFile)
-		if (!changeAndPath) {
+		let changeAndPathList = this.analyzer.exports.getImportPathAndTextChangeList(binding.name, binding.sourceFile, template.sourceFile)
+		if (!changeAndPathList) {
 			return undefined
 		}
 
-		let change = changeAndPath.textChange
-		let importPath = changeAndPath.importPath
-
-		return [{
-			fixName: `Update import`,
-			description: `Update import from "${importPath}"`,
-			changes: [change],
-		}]
+		return changeAndPathList.map(({textChange, importPath}) => ({
+			fixName: `Add import`,
+			description: `Add import from "${importPath}"`,
+			changes: [textChange],
+		}))
 	}
 }

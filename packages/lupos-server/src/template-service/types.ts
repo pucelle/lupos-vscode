@@ -1,6 +1,6 @@
 import {Position} from 'vscode-languageserver-types'
 import {Template} from './template'
-import type * as TS from 'typescript'
+import type TS from 'typescript'
 import {DiagnosticModifier} from '../lupos-ts-module'
 
 

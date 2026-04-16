@@ -1,4 +1,4 @@
-import type * as TS from 'typescript'
+import type TS from 'typescript'
 import {FoldingRange} from 'vscode-html-languageservice'
 import * as vscode from 'vscode-languageserver-types'
 import {PluginConfig, ts} from '../core'

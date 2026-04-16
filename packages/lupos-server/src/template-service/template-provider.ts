@@ -1,4 +1,4 @@
-import type * as TS from 'typescript'
+import type TS from 'typescript'
 import {Template} from './template'
 import {ts, ProjectContext, PluginConfig} from '../core'
 import {ScopeTree, WeakerPairKeysMap} from '../lupos-ts-module'

@@ -1,4 +1,4 @@
-import type * as TS from 'typescript'
+import type TS from 'typescript'
 import {TemplatePart, TemplatePartType, TemplateSlotPlaceholder, TemplatePartPiece, TemplatePartPieceType, LuposFlowControlTags, LuposBindingModifiers, LuposSimulatedEvents, LuposDOMEventModifiers, LuposDOMEventCategories, LuposComponentAttributes, getBindingModifierCompletionItems, findCompletionDataItem, filterCompletionDataItems} from '../lupos-ts-module'
 import {ProjectContext, ts} from '../core'
 import {WorkSpaceAnalyzer} from './analyzer'
@@ -32,7 +32,7 @@ export class LuposCompletion {
 				}
 
 				// Resolve for import path for each completion item.
-				let importPath = this.analyzer.resolvePartImportPath(part, template, item.name)
+				let importPath = this.analyzer.resolveBestPartImportPath(part, template, item.name)
 				if (importPath) {
 					items[i] = {
 						...item,
@@ -58,7 +58,7 @@ export class LuposCompletion {
 			return undefined
 		}
 
-		let pathChange = this.analyzer.resolveImportPathAndTextChange(part, template, item.name)
+		let pathChange = this.analyzer.resolveBestImportPathAndTextChange(part, template, item.name)
 		return makeCompletionEntryDetails(item, part, piece, pathChange)
 	}
 
