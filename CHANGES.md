@@ -1,8 +1,9 @@
 # Changes
 
+
 # 1.1.2
 
-- Prefers importing components or bindings  from relative path.
+- Prefers importing components or bindings from relative path.
 
 
 # 1.1.1
