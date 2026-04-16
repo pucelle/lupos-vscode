@@ -167,7 +167,22 @@ export class ExportsAnalyzer {
 		let targetFilePath = targetSourceFile.fileName
 		let availablePaths = this.getRelativeImportPaths(memberName, targetFilePath, fromFilePath)
 
-		// Import from node_modules
+		// Replace to shorter paths by alias.
+		if (availablePaths.length > 0 && availablePaths[0].includes('node_modules/')) {
+			let options = this.context.program.getCompilerOptions()
+			let host = ts.createCompilerHost(options)
+
+			for (let i = 0; i < availablePaths.length; i++) {
+				let availablePath = availablePaths[i]
+				let shorterPath = availablePath.replace(/.+?node_modules\//, '')
+
+				if (ts.resolveModuleName(shorterPath, fromFilePath, options, host).resolvedModule) {
+					availablePaths[i] = shorterPath
+				}
+			}
+		}
+		
+		// Import whole module from node_modules.
 		if (targetFilePath.includes('/node_modules/')) {
 			let moduleName = targetFilePath.match(/\/node_modules\/((?:@[^\/]+\/)?[^\/]+)/)?.[1]
 			if (moduleName) {
