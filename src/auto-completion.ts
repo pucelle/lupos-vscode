@@ -94,8 +94,9 @@ async function autoInsertTemplateSlot(start: number, insertedText: string) {
 		if (tagStartLine) {
 			let tagIndentCount = tagStartLine.match(/^\t+/)![0].length
 			let insertIndentCount = insertedText.match(/\t+/)?.[0]?.length ?? 0
+			let charAfter = document.getText().slice(end, end + 1)
 
-			if (insertIndentCount <= tagIndentCount) {
+			if (insertIndentCount <= tagIndentCount && charAfter !== '>') {
 				let insertTab = '\t'.repeat(insertIndentCount + 1 - tagIndentCount)
 				let insertTabPosition = document.positionAt(start + insertedText.length)
 
@@ -110,7 +111,7 @@ async function autoInsertTemplateSlot(start: number, insertedText: string) {
 			}
 		}
 
-		// Input `\n` before `/>`, eat a tab.
+		// Input `\n` before `/>` or `>`, eat a tab.
 		else {
 			let charsAfter = document.getText().slice(end, end + 2)
 			if (charsAfter === '/>') {
