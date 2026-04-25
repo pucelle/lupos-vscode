@@ -89,13 +89,13 @@ async function autoInsertTemplateSlot(start: number, insertedText: string) {
 		let end = start + insertedText.length
 		let position = document.positionAt(start)
 		let tagStartLine = getPreviousTagStartLine(position, document)
-		
+		let charAfter = document.getText().slice(end, end + 1)
+
 		// Input `\n` inside a `<...>`, add a tab to the new line.
 		if (tagStartLine) {
 			let tagIndentCount = tagStartLine.match(/^\t+/)![0].length
 			let insertIndentCount = insertedText.match(/\t+/)?.[0]?.length ?? 0
-			let charAfter = document.getText().slice(end, end + 1)
-
+	
 			if (insertIndentCount <= tagIndentCount && charAfter !== '>') {
 				let insertTab = '\t'.repeat(insertIndentCount + 1 - tagIndentCount)
 				let insertTabPosition = document.positionAt(start + insertedText.length)
@@ -114,7 +114,7 @@ async function autoInsertTemplateSlot(start: number, insertedText: string) {
 		// Input `\n` before `/>` or `>`, eat a tab.
 		else {
 			let charsAfter = document.getText().slice(end, end + 2)
-			if (charsAfter === '/>') {
+			if (charsAfter === '/>' || charAfter === '>') {
 
 				let endLine = document.lineAt(document.positionAt(end)).text
 				let tagIndentCount = endLine.match(/^\t+/)![0].length
@@ -134,6 +134,7 @@ async function autoInsertTemplateSlot(start: number, insertedText: string) {
 	}
 }
 
+/** Get `<...` at same line, or at previous line if current line is totally white spaces. */
 function getPreviousTagStartLine(position: vscode.Position, document: vscode.TextDocument): string | null {
 	let startLine = document.lineAt(position).text
 
