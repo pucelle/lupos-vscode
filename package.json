@@ -3,7 +3,7 @@
 	"displayName": "VScode Lupos",
 	"description": "Syntax highlighting and IntelliSense for Tagged Template of 'lupos' series",
 	"icon": "images/logo.png",
-	"version": "1.1.2",
+	"version": "1.1.3",
 	"publisher": "pucelle",
 	"license": "MIT",
 	"repository": {

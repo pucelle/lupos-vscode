@@ -106,6 +106,7 @@ export class JSTokenScanner extends AnyTokenScanner {
 					this.bracketExpect = this.bracketStack.pop()!
 				}
 				else {
+					this.bracketExpect = null
 					break
 				}
 			}

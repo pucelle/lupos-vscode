@@ -1,6 +1,12 @@
 # Changes
 
 
+
+# 1.1.3
+
+- Better tabs completion when editing HTML template.
+
+
 # 1.1.2
 
 - Prefers importing components or bindings from relative path.
