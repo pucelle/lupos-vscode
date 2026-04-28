@@ -1,5 +1,6 @@
 import * as vscode from 'vscode'
-import {isInsideTemplateSyntax, isLineStartTagButNotEnd, isTypeScriptLanguage} from './utils'
+import {getIndentCount, isLineStartTagButNotEnd, isTypeScriptLanguage} from './utils'
+import {JSTokenScanner, ScanState} from './tokens'
 
 
 interface AutoInsertingItem {
@@ -61,10 +62,15 @@ async function autoInsertTemplateSlot(start: number, insertedText: string) {
 	let document = editor.document
 	let textBefore = document.getText().slice(0, start)
 
+	let scanner = new JSTokenScanner(textBefore, 0)
+	let state = scanner.scanForFinalState()
+
 	// Must within template literal.
-	if (!isInsideTemplateSyntax(textBefore)) {
+	if (state !== ScanState.WithinTemplateLiteral) {
 		return
 	}
+
+	let templateStartOffset = scanner.startTemplateQuoteOffset
 
 	for (let {leftChar, insert, cursorOffset} of AutoInsertedItems) {
 		if (leftChar === insertedText) {
@@ -90,13 +96,15 @@ async function autoInsertTemplateSlot(start: number, insertedText: string) {
 		let position = document.positionAt(start)
 		let tagStartLine = getPreviousTagStartLine(position, document)
 		let charAfter = document.getText().slice(end, end + 1)
+		let charsAfter = document.getText().slice(end, end + 2)
+		let insertIndentCount = getIndentCount(insertedText.slice(1))
 
 		// Input `\n` inside a `<...>`, add a tab to the new line.
 		if (tagStartLine) {
-			let tagIndentCount = tagStartLine.match(/^\t+/)![0].length
-			let insertIndentCount = insertedText.match(/\t+/)?.[0]?.length ?? 0
+			let tagIndentCount = getIndentCount(tagStartLine)
+			
 	
-			if (insertIndentCount <= tagIndentCount && charAfter !== '>') {
+			if (insertIndentCount <= tagIndentCount && !(charAfter === '>' || charsAfter === '/>')) {
 				let insertTab = '\t'.repeat(insertIndentCount + 1 - tagIndentCount)
 				let insertTabPosition = document.positionAt(start + insertedText.length)
 
@@ -112,23 +120,36 @@ async function autoInsertTemplateSlot(start: number, insertedText: string) {
 		}
 
 		// Input `\n` before `/>` or `>`, eat a tab.
-		else {
-			let charsAfter = document.getText().slice(end, end + 2)
-			if (charsAfter === '/>' || charAfter === '>') {
+		else if (charAfter === '>' || charsAfter === '/>') {
+			let endLine = document.lineAt(document.positionAt(end)).text
+			let tagIndentCount = getIndentCount(endLine)
 
-				let endLine = document.lineAt(document.positionAt(end)).text
-				let tagIndentCount = endLine.match(/^\t+/)![0].length
+			if (tagIndentCount > 0) {
+				let endPosition = document.positionAt(end)
+				let startPosition = document.positionAt(end - 1)
+				let range = new vscode.Range(startPosition, endPosition)
 
-				if (tagIndentCount > 0) {
-					let endPosition = document.positionAt(end)
-					let startPosition = document.positionAt(end - 1)
-					let range = new vscode.Range(startPosition, endPosition)
+				// Delete a tab after inserted text.
+				await editor.edit(editBuilder => {
+					editBuilder.delete(range)
+				})
+			}
+		}
 
-					// Delete a tab after inserted text.
-					await editor.edit(editBuilder => {
-						editBuilder.delete(range)
-					})
-				}
+		// Input `\n` before '`', eat tabs to persist same with tabs at start template quote '`'.
+		else if (charAfter === '`') {
+			let startQuoteLine = document.lineAt(document.positionAt(templateStartOffset)).text
+			let startIndentCount = getIndentCount(startQuoteLine)
+
+			if (insertIndentCount > startIndentCount) {
+				let endPosition = document.positionAt(end)
+				let startPosition = document.positionAt(end - (insertIndentCount - startIndentCount))
+				let range = new vscode.Range(startPosition, endPosition)
+
+				// Delete a tab after inserted text.
+				await editor.edit(editBuilder => {
+					editBuilder.delete(range)
+				})
 			}
 		}
 	}

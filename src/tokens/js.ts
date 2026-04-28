@@ -29,6 +29,8 @@ export class JSTokenScanner extends AnyTokenScanner {
 	private bracketStack: string[] = []
 	private bracketExpect: string | null = null
 
+	startTemplateQuoteOffset: number = -1
+
 	/** Parse html string to tokens. */
 	scanForFinalState(): ScanState {
 		while (this.state !== ScanState.EOF) {
@@ -295,6 +297,7 @@ export class JSTokenScanner extends AnyTokenScanner {
 		let re = /[`\\$]/g
 
 		// Avoid read start quote.
+		this.startTemplateQuoteOffset = this.offset
 		this.offset += 1
 
 		while (true) {
