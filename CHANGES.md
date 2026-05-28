@@ -1,6 +1,10 @@
 # Changes
 
 
+# 1.1.4
+
+- Support `enter` and `leave` modifier for `:transition`.
+
 
 # 1.1.3
 
