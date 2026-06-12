@@ -1,9 +1,14 @@
 # Changes
 
 
+# 1.2.0
+
+- Supports `<lu:cache>`.
+
+
 # 1.1.4
 
-- Support `enter` and `leave` modifier for `:transition`.
+- Supports `enter` and `leave` modifier for `:transition`.
 
 
 # 1.1.3
