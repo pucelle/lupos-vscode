@@ -14,7 +14,7 @@ export class WorkSpaceAnalyzer extends Analyzer {
 	constructor(context: ProjectContext) {
 		super(context.helper)
 		this.context = context
-		this.exports = new ExportsAnalyzer(this.workspaceComponentsByFile, this.workSpaceBindingsByFile, this.context)
+		this.exports = new ExportsAnalyzer(this.workspaceComponentsByFile, this.workspaceBindingsByFile, this.context)
 	}
 
 	/** Make parsed results in given file expire. */
