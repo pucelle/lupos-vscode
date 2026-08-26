@@ -224,7 +224,7 @@ export class TSLanguageServiceProxy {
 					diagnostic.start = template.localOffsetToGlobal(diagnostic.start!)
 				})
 
-				diagnostics.push(...diagnostics)
+				diagnostics.push(...subDiagnostics)
 			}
 
 			// Merge original diagnostics with template ones.
