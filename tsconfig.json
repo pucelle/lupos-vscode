@@ -13,12 +13,19 @@
 		"noImplicitReturns": true,
 		"noFallthroughCasesInSwitch": true,
 		"noImplicitAny": true,
-		"noImplicitThis": true
+		"noImplicitThis": true,
+		"preserveSymlinks": true,
+		"skipLibCheck": true,
+		"tsBuildInfoFile": "out/tsconfig.tsbuildinfo"
     },
     "exclude": [
 		"node_modules",
 		"packages",
+		"tests",
 		"out"
+	],
+	"include": [
+		"src"
 	],
 	"references": [
 		{ "path": "./packages/lupos-server" },

@@ -90,6 +90,10 @@
 		"vscode:prepublish": "npm run build",
 		"build": "tsc -b",
 		"watch": "tsc -b -w",
+		"test": "vitest run",
+		"test:watch": "vitest",
+		"test:client": "vitest run tests/client",
+		"test:server": "vitest run tests/server",
 		"link": "mklink /j \"node_modules/lupos-server\" \"packages/lupos-server\"",
 		"copy-to-vsce": "node scripts/copy-to-vsce.js",
 		"vsce-package": "cd vsce && vsce package",
@@ -101,5 +105,8 @@
 		"fs-extra": "^11.3.2",
 		"vscode": "1.1.37",
 		"typescript": "^6.0.2"
+	},
+	"dependencies": {
+		"vitest": "^4.1.11"
 	}
 }

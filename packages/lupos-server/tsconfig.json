@@ -16,7 +16,10 @@
 		"noImplicitAny": true,
 		"noImplicitThis": true,
 		"noImplicitOverride": true,
-		"types": ["node"]
+		"types": ["node"],
+		"preserveSymlinks": true,
+		"skipLibCheck": true,
+		"tsBuildInfoFile": "out/tsconfig.tsbuildinfo"
     },
     "exclude": [
         "node_modules",

@@ -4,6 +4,9 @@ import {helperOfContext} from './lupos-ts-module'
 import {TSLanguageServiceProxy} from './shared-services/decorator'
 
 
+const DecoratedService = Symbol.for('lupos-server.decorated-language-service')
+
+
 // How to debug typescript plugin:
 // https://github.com/microsoft/TypeScript/wiki/Debugging-Language-Service-in-VS-Code
 
@@ -47,12 +50,18 @@ export class LuposPlugin implements TS.server.PluginModule {
 
 		Logger.initialize(info.project.projectService.logger)
 
+		let existingService = (info.languageService as TS.LanguageService & Record<symbol, TS.LanguageService>)[DecoratedService]
+		if (existingService) {
+			return existingService
+		}
+
 		if (this.decoratedServices.has(info.languageService)) {
 			return this.decoratedServices.get(info.languageService)!
 		}
 
 		let decoratedService = this.createDecoratedLanguageService(context)
 		this.decoratedServices.set(info.languageService, decoratedService)
+		Object.defineProperty(info.languageService, DecoratedService, {value: decoratedService})
 
 		return decoratedService
 	}
@@ -64,5 +73,3 @@ export class LuposPlugin implements TS.server.PluginModule {
 
 	onConfigurationChanged(_config: any) {}
 }
-
-
