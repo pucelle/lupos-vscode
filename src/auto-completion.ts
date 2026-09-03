@@ -72,6 +72,20 @@ async function autoInsertTemplateSlot(start: number, insertedText: string) {
 
 	let templateStartOffset = scanner.startTemplateQuoteOffset
 
+	// VS Code may insert a backtick pair when typing the closing quote of an
+	// embedded template. Keep the typed closing quote and remove the auto-added one.
+	if (insertedText === '``') {
+		let cursorPosition = document.positionAt(start + 1)
+		let redundantQuoteEnd = document.positionAt(start + 2)
+
+		await editor.edit(editBuilder => {
+			editBuilder.delete(new vscode.Range(cursorPosition, redundantQuoteEnd))
+		})
+
+		editor.selection = new vscode.Selection(cursorPosition, cursorPosition)
+		return
+	}
+
 	for (let {leftChar, insert, cursorOffset} of AutoInsertedItems) {
 		if (leftChar === insertedText) {
 			let insertPosition = document.positionAt(start + 1)

@@ -51,6 +51,22 @@ describe('autoCompletion', () => {
 		expect(document.text).toBe('const value = "$"')
 	})
 
+	it('eats the redundant quote when a closing backtick pair is inserted', async () => {
+		let sourceBeforeInsert = 'const view = html`<div></div>'
+		let document = new MockTextDocument(sourceBeforeInsert + '``')
+		let editor = new MockTextEditor(document)
+		window.activeTextEditor = editor
+
+		autoCompletion({
+			document,
+			contentChanges: [{rangeOffset: sourceBeforeInsert.length, text: '``'}],
+		} as never)
+		await flushAsyncEdits()
+
+		expect(document.text).toBe(sourceBeforeInsert + '`')
+		expect(document.offsetAt(editor.selection.active)).toBe(document.text.length)
+	})
+
 	it('adds one indentation level after an unfinished tag', async () => {
 		let before = 'const view = html`\n\t<Componentvalue`'
 		let start = before.indexOf('value')

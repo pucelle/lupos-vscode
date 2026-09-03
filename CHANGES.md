@@ -1,6 +1,11 @@
 # Changes
 
 
+# 1.3.0
+
+- html`...`, when input the last '`', vscode will auto complete it to '``', and we will delete one.
+
+
 # 1.2.0
 
 - Supports `<lu:cache>`.
