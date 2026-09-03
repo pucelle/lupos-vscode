@@ -4,6 +4,9 @@ import {autoCompletion} from '../../src/auto-completion'
 import {
 	MockTextDocument,
 	MockTextEditor,
+	Position,
+	Range,
+	Selection,
 	fireTextDocumentChange,
 	resetVSCodeMock,
 	window,
@@ -20,7 +23,7 @@ describe('client activation', () => {
 
 		let document = new MockTextDocument('const view = html`$')
 		window.activeTextEditor = new MockTextEditor(document)
-		fireTextDocumentChange({document, contentChanges: [{rangeOffset: document.text.length - 1, text: '$'}]})
+		fireTextDocumentChange({document, contentChanges: [{range: new Range(new Position(0, 18), new Position(0, 18)), rangeLength: 0, rangeOffset: document.text.length - 1, text: '$'}]})
 		await flushAsyncEdits()
 
 		expect(document.text).toBe('const view = html`${}')
@@ -79,5 +82,45 @@ describe('autoCompletion', () => {
 		await flushAsyncEdits()
 
 		expect(document.text).toBe('const view = html`\n\t<Component\n\t\tvalue`')
+	})
+
+	it('restores tabs eaten when completing a closing HTML tag', async () => {
+		let document = new MockTextDocument('const view = html`\n\t\t<a>\n</a>\n`')
+		let editor = new MockTextEditor(document)
+		editor.selection = new Selection(new Position(2, 4), new Position(2, 4))
+		window.activeTextEditor = editor
+
+		autoCompletion({
+			document,
+			contentChanges: [
+				{range: new Range(new Position(2, 4), new Position(2, 4)), rangeLength: 0, rangeOffset: 31, text: '>'},
+				{range: new Range(new Position(2, 0), new Position(2, 2)), rangeLength: 2, rangeOffset: 27, text: ''},
+			],
+		} as never)
+		await flushAsyncEdits()
+
+		expect(document.text).toBe('const view = html`\n\t\t<a>\n\t\t</a>\n`')
+		expect(editor.selection.active).toEqual(new Position(2, 6))
+	})
+
+	it('restores closing-tag indentation when VS Code reports only the typed character', async () => {
+		let document = new MockTextDocument('const view = html`\n\t\t<a>\n</a>\n`')
+		let editor = new MockTextEditor(document)
+		editor.selection = new Selection(new Position(2, 4), new Position(2, 4))
+		window.activeTextEditor = editor
+
+		autoCompletion({
+			document,
+			contentChanges: [{
+				range: new Range(new Position(2, 3), new Position(2, 3)),
+				rangeLength: 0,
+				rangeOffset: 30,
+				text: '>',
+			}],
+		})
+		await flushAsyncEdits()
+
+		expect(document.text).toBe('const view = html`\n\t\t<a>\n\t\t</a>\n`')
+		expect(editor.selection.active).toEqual(new Position(2, 6))
 	})
 })

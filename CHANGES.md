@@ -4,6 +4,8 @@
 # 1.3.0
 
 - html`...`, when input the last '`', vscode will auto complete it to '``', and we will delete one.
+- Support html syntax and the only `<template>` returned diagnostics.
+- Fix closing a tag in html template cause indentation loss.
 
 
 # 1.2.0

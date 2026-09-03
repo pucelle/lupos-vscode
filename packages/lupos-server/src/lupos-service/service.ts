@@ -113,6 +113,8 @@ export class LuposService {
 
 	modifyDiagnostics(template: Template, modifier: DiagnosticModifier) {
 		this.beFresh()
+		this.diagnostics.diagnoseHTMLSyntax(template, modifier)
+		this.diagnostics.diagnoseFunctionContextTemplate(template, modifier)
 		this.diagnostics.diagnose(template.parts, template, modifier)
 	}
 

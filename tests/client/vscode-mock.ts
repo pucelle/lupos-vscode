@@ -20,7 +20,12 @@ export class Selection extends Range {
 
 export interface TextDocumentChangeEvent {
 	document: MockTextDocument
-	contentChanges: {rangeOffset: number, text: string}[]
+	contentChanges: {
+		range: Range
+		rangeLength: number
+		rangeOffset: number
+		text: string
+	}[]
 }
 
 export class MockTextDocument {
@@ -44,8 +49,9 @@ export class MockTextDocument {
 		return offset + position.character
 	}
 
-	lineAt(position: Position) {
-		return {text: this.text.split('\n')[position.line] ?? ''}
+	lineAt(position: Position | number) {
+		let line = typeof position === 'number' ? position : position.line
+		return {text: this.text.split('\n')[line] ?? ''}
 	}
 }
 
