@@ -14,9 +14,10 @@ For Lupos Template Literal, this plugin provides:
 - HTML & CSS Highlighting and IntelliSense
 - Auto Completion
 - Quick Info
-- Goto Definition
+- Goto Definition and References
 - Diagnostics
 - Quick Fix for import missing
+- Renaming for Component, Property, Binding.
 
 
 
