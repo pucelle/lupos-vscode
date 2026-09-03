@@ -7,6 +7,9 @@ import {ProjectContext} from '../core'
 import {Template} from '../template-service'
 import {DiagnosticModifier, getTemplatePartPieceAt, TemplateDiagnostics} from '../lupos-ts-module'
 import {LuposCodeFixes} from './code-fixes'
+import {LuposRename} from './rename'
+import {TemplateProvider} from '../template-service/template-provider'
+import {LuposReferences} from './references'
 
 
 /** Provide lupos language service for a single. */
@@ -20,9 +23,11 @@ export class LuposService {
 	private definition: LuposDefinition
 	private diagnostics: TemplateDiagnostics
 	private codeFixes: LuposCodeFixes
+	private rename: LuposRename
+	private references: LuposReferences
 	private freshing: boolean = false
 
-	constructor(context: ProjectContext) {
+	constructor(context: ProjectContext, templateProvider: TemplateProvider) {
 		this.context = context
 		this.analyzer = new WorkSpaceAnalyzer(context)
 		this.completion = new LuposCompletion(this.analyzer)
@@ -30,6 +35,8 @@ export class LuposService {
 		this.definition = new LuposDefinition(this.analyzer)
 		this.diagnostics = new TemplateDiagnostics(this.analyzer)
 		this.codeFixes = new LuposCodeFixes(this.analyzer)
+		this.rename = new LuposRename(this.analyzer, templateProvider)
+		this.references = new LuposReferences(this.analyzer, templateProvider)
 	}
 
 	/** Make sure to reload changed source files. */
@@ -116,6 +123,84 @@ export class LuposService {
 		this.diagnostics.diagnoseHTMLSyntax(template, modifier)
 		this.diagnostics.diagnoseFunctionContextTemplate(template, modifier)
 		this.diagnostics.diagnose(template.parts, template, modifier)
+	}
+
+	augmentReferences(symbols: TS.ReferencedSymbol[] | undefined) {
+		this.beFresh()
+		return this.references.augment(symbols)
+	}
+
+	getReferences(template: Template, temOffset: number) {
+		let part = template.getPartAt(temOffset)
+		if (!part) {
+			return undefined
+		}
+
+		let piece = getTemplatePartPieceAt(part, temOffset)
+		if (!piece) {
+			return undefined
+		}
+
+		this.beFresh()
+		return this.references.findReferences(part, piece, template)
+	}
+
+	modifyRenameInfo(fileName: string, position: number, info: TS.RenameInfo) {
+		this.beFresh()
+		return this.rename.modifyRenameInfo(fileName, position, info)
+	}
+
+	augmentRenameLocations(
+		fileName: string,
+		position: number,
+		locations: readonly TS.RenameLocation[] | undefined
+	) {
+		this.beFresh()
+		return this.rename.augmentRenameLocations(fileName, position, locations)
+	}
+
+	getRenameInfo(template: Template, temOffset: number, preferences?: TS.UserPreferences | TS.RenameInfoOptions) {
+		let part = template.getPartAt(temOffset)
+		if (!part) {
+			return undefined
+		}
+
+		let piece = getTemplatePartPieceAt(part, temOffset)
+		if (!piece) {
+			return undefined
+		}
+
+		this.beFresh()
+		return this.rename.getRenameInfo(part, piece, template, preferences)
+	}
+
+	findRenameLocations(
+		template: Template,
+		temOffset: number,
+		findInStrings: boolean,
+		findInComments: boolean,
+		preferences?: boolean | TS.UserPreferences
+	) {
+		let part = template.getPartAt(temOffset)
+		if (!part) {
+			return undefined
+		}
+
+		let piece = getTemplatePartPieceAt(part, temOffset)
+		if (!piece) {
+			return undefined
+		}
+
+		this.beFresh()
+		
+		return this.rename.findRenameLocations(
+			part,
+			piece,
+			template,
+			findInStrings,
+			findInComments,
+			preferences
+		)
 	}
 
 	getCodeFixesAtPosition(template: Template, temOffset: number, errorCodes: ReadonlyArray<number>): TS.CodeFixAction[] | undefined {

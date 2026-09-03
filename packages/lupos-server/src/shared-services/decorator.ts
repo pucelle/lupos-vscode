@@ -29,8 +29,8 @@ export class TSLanguageServiceProxy {
 
 	constructor(context: ProjectContext) {
 		this.context = context
-		this.templateService = new TemplateServiceRouter(context)
 		this.templateProvider = new TemplateProvider(context)
+		this.templateService = new TemplateServiceRouter(context, this.templateProvider)
 
 		this.wrapGetCompletionsAtPosition()
 		this.wrapGetCompletionEntryDetails()
@@ -45,6 +45,8 @@ export class TSLanguageServiceProxy {
 		this.wrapGetSignatureHelpItemsAtPosition()
 		this.wrapGetOutliningSpans()
 		this.wrapGetReferencesAtPosition()
+		this.wrapGetRenameInfo()
+		this.wrapFindRenameLocations()
 		this.wrapGetJsxClosingTagAtPosition()
 	}
 
@@ -376,20 +378,40 @@ export class TSLanguageServiceProxy {
 	}
 
 	private wrapGetReferencesAtPosition() {
-		if (!this.templateService.getReferencesAtPosition) {
+		if (
+			!this.templateService.getReferencesAtPosition
+			&& !this.templateService.getSemanticReferencesAtPosition
+			&& !this.templateService.augmentReferences
+		) {
 			return
 		}
 
 		this.wrap('findReferences', (callOriginal, fileName: string, gloOffset: number) => {
 			let template = this.templateProvider.getTemplateAt(fileName, gloOffset)
 			if (!template) {
-				return callOriginal()
+				let symbols = callOriginal()
+
+				return this.templateService.augmentReferences
+					? this.templateService.augmentReferences(symbols)
+					: symbols
 			}
 
 			let temOffset = template.globalOffsetToLocal(gloOffset)
 			let withinValueRange = template.isWithinValueRange(temOffset)
-			let symbols = this.templateService.getReferencesAtPosition!(template, temOffset, gloOffset)
 
+			// Resolves Lupos component, property, or binding symbols.
+			let semanticSymbols = this.templateService.getSemanticReferencesAtPosition?.(
+				template,
+				temOffset,
+				gloOffset
+			)
+
+			if (semanticSymbols && semanticSymbols.length > 0) {
+				return semanticSymbols
+			}
+
+			// Resolves generic HTML/CSS document highlighting.
+			let symbols = this.templateService.getReferencesAtPosition?.(template, temOffset, gloOffset)
 			if (symbols) {
 				symbols.forEach(symbol => {
 					this.translateTextSpan(symbol.definition.textSpan, template!)
@@ -412,12 +434,100 @@ export class TSLanguageServiceProxy {
 				})
 			}
 
+			// Use original reference service when locate in value range.
 			if (withinValueRange && (!symbols || symbols.length === 0)) {
-				return callOriginal()
+				let originalSymbols = callOriginal()
+
+				return this.templateService.augmentReferences
+					? this.templateService.augmentReferences(originalSymbols)
+					: originalSymbols
 			}
 
 			// Replace original references to template ones.
 			return symbols
+		})
+	}
+
+	private wrapGetRenameInfo() {
+		if (!this.templateService.getRenameInfoAtPosition && !this.templateService.modifyRenameInfo) {
+			return
+		}
+
+		this.wrap('getRenameInfo', (callOriginal, fileName: string, gloOffset: number, preferences) => {
+			let template = this.templateProvider.getTemplateAt(fileName, gloOffset)
+			if (!template) {
+				let info = callOriginal()
+
+				return this.templateService.modifyRenameInfo
+					? this.templateService.modifyRenameInfo(fileName, gloOffset, info)
+					: info
+			}
+
+			let temOffset = template.globalOffsetToLocal(gloOffset)
+
+			// Modify existing rename info and may deny it.
+			if (template.isWithinValueRange(temOffset)) {
+				let info = callOriginal()
+
+				return this.templateService.modifyRenameInfo
+					? this.templateService.modifyRenameInfo(fileName, gloOffset, info)
+					: info
+			}
+
+			// Get template range rename info.
+			let info = this.templateService.getRenameInfoAtPosition!(template, temOffset, preferences)
+			if (!info) {
+				return callOriginal()
+			}
+
+			if (info.canRename) {
+				this.translateTextSpan(info.triggerSpan, template)
+			}
+
+			return info
+		})
+	}
+
+	private wrapFindRenameLocations() {
+		if (!this.templateService.findRenameLocations && !this.templateService.augmentRenameLocations) {
+			return
+		}
+
+		this.wrap('findRenameLocations', (
+			callOriginal,
+			fileName: string,
+			gloOffset: number,
+			findInStrings: boolean,
+			findInComments: boolean,
+			preferences
+		) => {
+			let template = this.templateProvider.getTemplateAt(fileName, gloOffset)
+			if (!template) {
+				let locations = callOriginal()
+
+				return this.templateService.augmentRenameLocations
+					? this.templateService.augmentRenameLocations(fileName, gloOffset, locations)
+					: locations
+			}
+
+			// Augment rename locations to add location from template.
+			let temOffset = template.globalOffsetToLocal(gloOffset)
+			if (template.isWithinValueRange(temOffset)) {
+				let locations = callOriginal()
+
+				return this.templateService.augmentRenameLocations
+					? this.templateService.augmentRenameLocations(fileName, gloOffset, locations)
+					: locations
+			}
+
+			// Get rename locations directly from template.
+			return this.templateService.findRenameLocations!(
+				template,
+				temOffset,
+				findInStrings,
+				findInComments,
+				preferences
+			)
 		})
 	}
 

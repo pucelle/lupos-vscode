@@ -14,14 +14,16 @@ export interface TestLanguageService {
 	fileName: string
 	service: ts.LanguageService
 	update(text: string): void
+	read(fileName?: string): string
 }
 
-export function createTestLanguageService(text: string): TestLanguageService {
+export function createTestLanguageService(text: string, extraFiles: Record<string, string> = {}): TestLanguageService {
 	let fileName = 'C:/project/main.ts'
 	let typesFileName = 'C:/project/lupos-html.d.ts'
 	let files = new Map([
 		[fileName, {text, version: 0}],
 		[typesFileName, {text: LuposTypes, version: 0}],
+		...Object.entries(extraFiles).map(([name, fileText]) => [name, {text: fileText, version: 0}] as const),
 	])
 	let options: ts.CompilerOptions = {
 		module: ts.ModuleKind.CommonJS,
@@ -60,6 +62,9 @@ export function createTestLanguageService(text: string): TestLanguageService {
 			let file = files.get(fileName)!
 			file.text = newText
 			file.version++
+		},
+		read(name = fileName) {
+			return files.get(name)!.text
 		},
 	}
 }

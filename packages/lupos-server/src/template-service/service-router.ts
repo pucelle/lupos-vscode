@@ -5,6 +5,7 @@ import {LuposService} from '../lupos-service'
 import {Logger, ProjectContext} from '../core'
 import {TemplateLanguageService} from './types'
 import {Template} from './template'
+import {TemplateProvider} from './template-provider'
 import {TemplateEmbeddedRegion} from './embedded-region'
 import {SharedCSSService, SharedHTMLService} from '../shared-services'
 import {DiagnosticModifier, TemplatePartType} from '../lupos-ts-module'
@@ -21,10 +22,10 @@ export class TemplateServiceRouter implements TemplateLanguageService {
 
 	private luposService: LuposService
 
-	constructor(context: ProjectContext) {
+	constructor(context: ProjectContext, templateProvider: TemplateProvider) {
 		this.context = context
 		this.tsService = context.service
-		this.luposService = new LuposService(context)
+		this.luposService = new LuposService(context, templateProvider)
 
 		Logger.log('Lupos Plugin Started')
 	}
@@ -268,6 +269,51 @@ export class TemplateServiceRouter implements TemplateLanguageService {
 		}
 
 		return undefined
+	}
+
+	getSemanticReferencesAtPosition(template: Template, temOffset: number): TS.ReferencedSymbol[] | undefined {
+		let region = template.embedded.getRegionAt(temOffset)
+		if (region.languageId !== 'html') {
+			return undefined
+		}
+
+		return this.luposService.getReferences(template, temOffset)
+	}
+
+	augmentReferences(symbols: TS.ReferencedSymbol[] | undefined): TS.ReferencedSymbol[] | undefined {
+		return this.luposService.augmentReferences(symbols)
+	}
+
+	getRenameInfoAtPosition(template: Template, temOffset: number, preferences?: TS.UserPreferences | TS.RenameInfoOptions) {
+		return this.luposService.getRenameInfo(template, temOffset, preferences)
+	}
+
+	modifyRenameInfo(fileName: string, position: number, info: TS.RenameInfo): TS.RenameInfo {
+		return this.luposService.modifyRenameInfo(fileName, position, info)
+	}
+
+	findRenameLocations(
+		template: Template,
+		temOffset: number,
+		findInStrings: boolean,
+		findInComments: boolean,
+		preferences?: boolean | TS.UserPreferences
+	) {
+		return this.luposService.findRenameLocations(
+			template,
+			temOffset,
+			findInStrings,
+			findInComments,
+			preferences
+		)
+	}
+
+	augmentRenameLocations(
+		fileName: string,
+		position: number,
+		locations: readonly TS.RenameLocation[] | undefined
+	): readonly TS.RenameLocation[] | undefined {
+		return this.luposService.augmentRenameLocations(fileName, position, locations)
 	}
 
 	getJsxClosingTagAtPosition(template: Template, gloOffset: number): TS.JsxClosingTagInfo | undefined {
