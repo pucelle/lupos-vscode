@@ -1,4 +1,5 @@
-import {describe, expect, it} from 'vitest'
+import {describe, expect, it, vi} from 'vitest'
+import {WorkSpaceAnalyzer} from '../../packages/lupos-server/src/lupos-service/analyzer/analyzer'
 import {createTestLanguageService} from './language-service'
 
 const Source = `
@@ -10,6 +11,29 @@ const view = html\`<Card></Card>\`
 `
 
 describe('server language features', () => {
+	it('reuses workspace analysis for repeated completion', () => {
+		let source = Source.replace('<Card>', '<Ca>')
+		let analyzerUpdate = vi.spyOn(WorkSpaceAnalyzer.prototype, 'update')
+		let harness = createTestLanguageService(source)
+		let position = source.indexOf('<Ca>') + 3
+
+		harness.service.getCompletionsAtPosition(harness.fileName, position, {})
+		harness.service.getCompletionsAtPosition(harness.fileName, position, {})
+
+		expect(analyzerUpdate).toHaveBeenCalledTimes(1)
+
+		let changedSource = source.replace('<Ca>', '<Car>')
+		harness.update(changedSource)
+		harness.service.getCompletionsAtPosition(
+			harness.fileName,
+			changedSource.indexOf('<Car>') + 4,
+			{}
+		)
+
+		expect(analyzerUpdate).toHaveBeenCalledTimes(2)
+		analyzerUpdate.mockRestore()
+	})
+
 	it('completes workspace components inside a tag name', () => {
 		let source = Source.replace('<Card>', '<Ca>')
 		let {service, fileName} = createTestLanguageService(source)

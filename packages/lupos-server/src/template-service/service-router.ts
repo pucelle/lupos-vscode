@@ -5,7 +5,6 @@ import {LuposService} from '../lupos-service'
 import {Logger, ProjectContext} from '../core'
 import {TemplateLanguageService} from './types'
 import {Template} from './template'
-import {TemplateProvider} from './template-provider'
 import {TemplateEmbeddedRegion} from './embedded-region'
 import {SharedCSSService, SharedHTMLService} from '../shared-services'
 import {DiagnosticModifier, TemplatePartType} from '../lupos-ts-module'
@@ -22,20 +21,20 @@ export class TemplateServiceRouter implements TemplateLanguageService {
 
 	private luposService: LuposService
 
-	constructor(context: ProjectContext, templateProvider: TemplateProvider) {
+	constructor(context: ProjectContext) {
 		this.context = context
 		this.tsService = context.service
-		this.luposService = new LuposService(context, templateProvider)
+		this.luposService = new LuposService(context)
 
 		Logger.log('Lupos Plugin Started')
 	}
 
-	getCompletionsAtPosition(template: Template, temOffset: number, gloOffset: number): TS.CompletionInfo | undefined {
+	getCompletionsAtPosition(template: Template, temOffset: number, _gloOffset: number): TS.CompletionInfo | undefined {
 		let region = template.embedded.getRegionAt(temOffset)
 		let tsCompletions: TS.CompletionInfo = VS2TSTranslator.makeEmptyTSCompletion()
 
 		if (region.languageId === 'html') {
-			let luposCompletions = this.luposService.getCompletionInfo(template, temOffset, gloOffset)
+			let luposCompletions = this.luposService.getCompletionInfo(template, temOffset)
 			if (luposCompletions) {
 				tsCompletions.entries.push(...luposCompletions.entries)
 			}
@@ -56,11 +55,11 @@ export class TemplateServiceRouter implements TemplateLanguageService {
 		return tsCompletions
 	}
 
-	getCompletionEntryDetails(template: Template, temOffset: number, gloOffset: number, name: string): TS.CompletionEntryDetails | undefined {
+	getCompletionEntryDetails(template: Template, temOffset: number, _gloOffset: number, name: string): TS.CompletionEntryDetails | undefined {
 		let region = template.embedded.getRegionAt(temOffset)
 
 		if (region.languageId === 'html') {
-			let luposCompletionDetails = this.luposService.getCompletionEntryDetails(template, temOffset, gloOffset, name)
+			let luposCompletionDetails = this.luposService.getCompletionEntryDetails(template, temOffset, name)
 			if (luposCompletionDetails) {
 				return luposCompletionDetails
 			}
@@ -95,14 +94,14 @@ export class TemplateServiceRouter implements TemplateLanguageService {
 		return completions
 	}
 
-	getQuickInfoAtPosition(template: Template, temOffset: number, gloOffset: number): TS.QuickInfo | undefined {
+	getQuickInfoAtPosition(template: Template, temOffset: number, _gloOffset: number): TS.QuickInfo | undefined {
 		let region = template.embedded.getRegionAt(temOffset)
 		let hover: vscode.Hover | null = null
 		let regOffset = region.templateOffsetToLocal(temOffset)
 		let regPosition = region.localOffsetToPosition(regOffset)
 
 		if (region.languageId === 'html') {
-			let tsHover = this.luposService.getQuickInfo(template, temOffset, gloOffset)
+			let tsHover = this.luposService.getQuickInfo(template, temOffset)
 			if (tsHover) {
 				return tsHover
 			}
@@ -117,20 +116,6 @@ export class TemplateServiceRouter implements TemplateLanguageService {
 
 		if (hover) {
 			return VS2TSTranslator.translateVSHoverToTS(hover, regPosition, region)
-		}
-
-		return undefined
-	}
-
-	getDefinitionAndBoundSpan(template: Template, temOffset: number, gloOffset: number): TS.DefinitionInfoAndBoundSpan | undefined {
-		let region = template.embedded.getRegionAt(temOffset)
-		let regOffset = region.templateOffsetToLocal(temOffset)
-
-		if (region.languageId === 'html') {
-			let luposDefinitions = this.luposService.getDefinition(template, regOffset, gloOffset)
-			if (luposDefinitions) {
-				return luposDefinitions
-			}
 		}
 
 		return undefined
@@ -269,51 +254,6 @@ export class TemplateServiceRouter implements TemplateLanguageService {
 		}
 
 		return undefined
-	}
-
-	getSemanticReferencesAtPosition(template: Template, temOffset: number): TS.ReferencedSymbol[] | undefined {
-		let region = template.embedded.getRegionAt(temOffset)
-		if (region.languageId !== 'html') {
-			return undefined
-		}
-
-		return this.luposService.getReferences(template, temOffset)
-	}
-
-	augmentReferences(symbols: TS.ReferencedSymbol[] | undefined): TS.ReferencedSymbol[] | undefined {
-		return this.luposService.augmentReferences(symbols)
-	}
-
-	getRenameInfoAtPosition(template: Template, temOffset: number, preferences?: TS.UserPreferences | TS.RenameInfoOptions) {
-		return this.luposService.getRenameInfo(template, temOffset, preferences)
-	}
-
-	modifyRenameInfo(fileName: string, position: number, info: TS.RenameInfo): TS.RenameInfo {
-		return this.luposService.modifyRenameInfo(fileName, position, info)
-	}
-
-	findRenameLocations(
-		template: Template,
-		temOffset: number,
-		findInStrings: boolean,
-		findInComments: boolean,
-		preferences?: boolean | TS.UserPreferences
-	) {
-		return this.luposService.findRenameLocations(
-			template,
-			temOffset,
-			findInStrings,
-			findInComments,
-			preferences
-		)
-	}
-
-	augmentRenameLocations(
-		fileName: string,
-		position: number,
-		locations: readonly TS.RenameLocation[] | undefined
-	): readonly TS.RenameLocation[] | undefined {
-		return this.luposService.augmentRenameLocations(fileName, position, locations)
 	}
 
 	getJsxClosingTagAtPosition(template: Template, gloOffset: number): TS.JsxClosingTagInfo | undefined {

@@ -34,20 +34,6 @@ export interface TemplateLanguageService {
 		gloOffset: number,
 	): TS.QuickInfo | undefined
 
-	/** Returned definition should be fit with global document. */
-	getDefinitionAtPosition?(
-		template: Template,
-		temOffset: number,
-		gloOffset: number,
-	): TS.DefinitionInfo[]
-	
-	/** Returned definition should be fit with global document. */
-	getDefinitionAndBoundSpan?(
-		template: Template,
-		temOffset: number,
-		gloOffset: number,
-	): TS.DefinitionInfoAndBoundSpan | undefined
-
 	getSyntacticDiagnostics?(
 		template: Template
 	): TS.Diagnostic[]
@@ -91,43 +77,6 @@ export interface TemplateLanguageService {
 		temOffset: number,
 		gloOffset: number,
 	): TS.ReferencedSymbol[] | undefined
-
-	/** Returned references are already located in their global source files. */
-	getSemanticReferencesAtPosition?(
-		template: Template,
-		temOffset: number,
-		gloOffset: number,
-	): TS.ReferencedSymbol[] | undefined
-
-	augmentReferences?(
-		symbols: TS.ReferencedSymbol[] | undefined
-	): TS.ReferencedSymbol[] | undefined
-
-	getRenameInfoAtPosition?(
-		template: Template,
-		temOffset: number,
-		preferences?: TS.UserPreferences | TS.RenameInfoOptions
-	): TS.RenameInfo | undefined
-
-	modifyRenameInfo?(
-		fileName: string,
-		position: number,
-		info: TS.RenameInfo
-	): TS.RenameInfo
-
-	findRenameLocations?(
-		template: Template,
-		temOffset: number,
-		findInStrings: boolean,
-		findInComments: boolean,
-		preferences?: boolean | TS.UserPreferences
-	): readonly TS.RenameLocation[] | undefined
-
-	augmentRenameLocations?(
-		fileName: string,
-		position: number,
-		locations: readonly TS.RenameLocation[] | undefined
-	): readonly TS.RenameLocation[] | undefined
 
 	getJsxClosingTagAtPosition?(
 		template: Template,

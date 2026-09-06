@@ -4,7 +4,6 @@ import {ProjectContext, ts} from '../core'
 import {WorkSpaceAnalyzer} from './analyzer'
 import {DOMStyleProperties, DOMElementEvents, filterBooleanAttributeCompletionItems, filterDOMElementCompletionItems, CompletionItem, assignCompletionItems} from '../complete-data'
 import {Template} from '../template-service'
-import {getTemplateValueCompletionItems} from './template-value-service'
 import {makeCompletionEntryDetails, makeCompletionInfo} from './helpers/completion-converter'
 
 
@@ -19,8 +18,8 @@ export class LuposCompletion {
 		this.context = analyzer.context
 	}
 
-	getCompletionInfo(part: TemplatePart, piece: TemplatePartPiece, template: Template, gloOffset: number): TS.CompletionInfo {
-		let items = this.getCompletionItems(part, piece, template, gloOffset)
+	getCompletionInfo(part: TemplatePart, piece: TemplatePartPiece, template: Template): TS.CompletionInfo {
+		let items = this.getCompletionItems(part, piece, template)
 
 		if (piece.type === TemplatePartPieceType.TagName) {
 			for (let i = 0; i < items.length; i++) {
@@ -45,8 +44,8 @@ export class LuposCompletion {
 		return makeCompletionInfo(items, part, piece)
 	}
 
-	getCompletionEntryDetails(part: TemplatePart, piece: TemplatePartPiece, template: Template, gloOffset: number, name: string): TS.CompletionEntryDetails | undefined {
-		let items = this.getCompletionItems(part, piece, template, gloOffset)
+	getCompletionEntryDetails(part: TemplatePart, piece: TemplatePartPiece, template: Template, name: string): TS.CompletionEntryDetails | undefined {
+		let items = this.getCompletionItems(part, piece, template)
 		let item = items.find(item => item.name === name)
 		if (!item) {
 			return undefined
@@ -62,7 +61,7 @@ export class LuposCompletion {
 		return makeCompletionEntryDetails(item, part, piece, pathChange)
 	}
 
-	protected getCompletionItems(part: TemplatePart, piece: TemplatePartPiece, template: Template, gloOffset: number): CompletionItem[] {
+	protected getCompletionItems(part: TemplatePart, piece: TemplatePartPiece, template: Template): CompletionItem[] {
 		let items: CompletionItem[] = []
 
 		// Print part
@@ -122,8 +121,6 @@ export class LuposCompletion {
 				items = filterDOMElementCompletionItems(part.attr!.value!)
 			}
 		}
-
-		items.push(...getTemplateValueCompletionItems(part, piece, template, gloOffset, this.analyzer) ?? [])
 
 		return items
 	}

@@ -6,6 +6,7 @@ import type TS from 'typescript'
 import {Template, TemplateProvider, TemplateLanguageService, TemplateServiceRouter} from '../template-service'
 import {ProjectContext, ts} from '../core'
 import {DiagnosticModifier} from '../lupos-ts-module'
+import {MirrorService} from '../mirror-service'
 
 
 /** from `(A, B) => C` to `(D: () => C, A, B) => C` */
@@ -25,12 +26,17 @@ export class TSLanguageServiceProxy {
 	readonly templateService: TemplateLanguageService
 
 	private templateProvider: TemplateProvider
+
+	/** TypeScript language service over project-wide Lupos mirror documents. */
+	private mirrorService: MirrorService
+
 	private readonly wrappers: {name: keyof TS.LanguageService, wrapper: LanguageServiceWrapper<any>}[] = []
 
 	constructor(context: ProjectContext) {
 		this.context = context
 		this.templateProvider = new TemplateProvider(context)
-		this.templateService = new TemplateServiceRouter(context, this.templateProvider)
+		this.templateService = new TemplateServiceRouter(context)
+		this.mirrorService = new MirrorService(context)
 
 		this.wrapGetCompletionsAtPosition()
 		this.wrapGetCompletionEntryDetails()
@@ -48,6 +54,7 @@ export class TSLanguageServiceProxy {
 		this.wrapGetRenameInfo()
 		this.wrapFindRenameLocations()
 		this.wrapGetJsxClosingTagAtPosition()
+		this.wrapDispose()
 	}
 
 	/** Decorate with low level typescript language service. */
@@ -91,10 +98,16 @@ export class TSLanguageServiceProxy {
 			let temOffset = template.globalOffsetToLocal(gloOffset)
 			let withinValueRange = template.isWithinValueRange(temOffset)
 			let info = this.templateService.getCompletionsAtPosition!(template, temOffset, gloOffset, options)
+			
+			let mirrorInfo = withinValueRange
+				? this.mirrorService.getCompletionsAtPosition(fileName, gloOffset, options)
+				: undefined
 
 			if (info) {
 				info.entries.forEach(entry => this.translateTextSpan(entry.replacementSpan, template!))
 			}
+
+			info = this.mergeCompletionInfo(info, mirrorInfo)
 
 			if (withinValueRange && (!info || info.entries.length === 0)) {
 				return callOriginal()
@@ -111,12 +124,54 @@ export class TSLanguageServiceProxy {
 		}
 	}
 
+	/** Merge mirror semantic completions with template and HTML catalog entries. */
+	private mergeCompletionInfo(
+		primary: TS.CompletionInfo | undefined,
+		secondary: TS.CompletionInfo | undefined
+	): TS.CompletionInfo | undefined {
+		if (!primary) {
+			return secondary
+		}
+		else if (!secondary) {
+			return primary
+		}
+
+		let entries = [...primary.entries]
+		let keys = new Set(entries.map(entry => `${entry.name}:${entry.source ?? ''}:${entry.kind}`))
+
+		for (let entry of secondary.entries) {
+			let key = `${entry.name}:${entry.source ?? ''}:${entry.kind}`
+			if (!keys.has(key)) {
+				keys.add(key)
+				entries.push(entry)
+			}
+		}
+
+		return {
+			...secondary,
+			...primary,
+			isGlobalCompletion: primary.isGlobalCompletion || secondary.isGlobalCompletion,
+			isMemberCompletion: primary.isMemberCompletion || secondary.isMemberCompletion,
+			isNewIdentifierLocation: primary.isNewIdentifierLocation || secondary.isNewIdentifierLocation,
+			entries,
+		}
+	}
+
 	private wrapGetCompletionEntryDetails() {
 		if (!this.templateService.getCompletionEntryDetails) {
 			return
 		}
 
-		this.wrap('getCompletionEntryDetails', (callOriginal, fileName: string, gloOffset: number, name: string, options) => {
+		this.wrap('getCompletionEntryDetails', (
+			callOriginal,
+			fileName: string,
+			gloOffset: number,
+			name: string,
+			options,
+			source,
+			preferences,
+			data
+		) => {
 			let template = this.templateProvider.getTemplateAt(fileName, gloOffset)
 			if (!template) {
 				return callOriginal()
@@ -125,6 +180,23 @@ export class TSLanguageServiceProxy {
 			// Replace with lupos template completion.
 			let temOffset = template.globalOffsetToLocal(gloOffset)
 			let withinValueRange = template.isWithinValueRange(temOffset)
+
+			if (withinValueRange) {
+				let mirrorEntry = this.mirrorService.getCompletionEntryDetails(
+					fileName,
+					gloOffset,
+					name,
+					options,
+					source,
+					preferences,
+					data
+				)
+
+				if (mirrorEntry) {
+					return mirrorEntry
+				}
+			}
+
 			let entry = this.templateService.getCompletionEntryDetails!(template, temOffset, gloOffset, name, options)
 
 			if (withinValueRange && !entry) {
@@ -145,6 +217,11 @@ export class TSLanguageServiceProxy {
 			if (!template) {
 				return callOriginal()
 			}
+
+			let mirrorInfo = this.mirrorService.getQuickInfoAtPosition(fileName, gloOffset)
+			if (mirrorInfo) {
+				return mirrorInfo
+			}
 			
 			// Replace with lupos template completion.
 			let temOffset = template.globalOffsetToLocal(gloOffset)
@@ -164,50 +241,34 @@ export class TSLanguageServiceProxy {
 	}
 
 	private wrapGetDefinitionAtPosition() {
-		if (!this.templateService.getDefinitionAtPosition) {
-			return
-		}
-
 		this.wrap('getDefinitionAtPosition', (callOriginal, fileName: string, gloOffset: number) => {
 			let template = this.templateProvider.getTemplateAt(fileName, gloOffset)
 			if (!template) {
 				return callOriginal()
 			}
 
-			// Replace with template definitions.
-			let temOffset = template.globalOffsetToLocal(gloOffset)
-			let withinValueRange = template.isWithinValueRange(temOffset)
-			let definitions = this.templateService.getDefinitionAtPosition!(template, temOffset, gloOffset)
-
-			if (withinValueRange && definitions.length === 0) {
-				return callOriginal()
+			let mirrorDefinitions = this.mirrorService.getDefinitionAtPosition(fileName, gloOffset)
+			if (mirrorDefinitions && mirrorDefinitions.length > 0) {
+				return [...mirrorDefinitions]
 			}
 
-			return definitions
+			return callOriginal()
 		})
 	}
 
 	private wrapGetDefinitionAndBoundSpan() {
-		if (!this.templateService.getDefinitionAndBoundSpan) {
-			return
-		}
-		
 		this.wrap('getDefinitionAndBoundSpan', (callOriginal, fileName: string, gloOffset: number) => {
 			let template = this.templateProvider.getTemplateAt(fileName, gloOffset)
 			if (!template) {
 				return callOriginal()
 			}
 
-			// Replace with template definitions.
-			let temOffset = template.globalOffsetToLocal(gloOffset)
-			let withinValueRange = template.isWithinValueRange(temOffset)
-			let definitionAndSpan = this.templateService.getDefinitionAndBoundSpan!(template, temOffset, gloOffset)
-
-			if (withinValueRange && (!definitionAndSpan || !definitionAndSpan.definitions || definitionAndSpan.definitions.length === 0)) {
-				return callOriginal()
+			let mirrorResult = this.mirrorService.getDefinitionAndBoundSpan(fileName, gloOffset)
+			if (mirrorResult?.definitions && mirrorResult.definitions.length > 0) {
+				return mirrorResult
 			}
 
-			return definitionAndSpan
+			return callOriginal()
 		})
 	}
 
@@ -240,7 +301,7 @@ export class TSLanguageServiceProxy {
 		}
 
 		this.wrap('getSemanticDiagnostics', (callOriginal, fileName: string) => {
-			let diagnostics = callOriginal()
+			let diagnostics = this.mirrorService.getSemanticDiagnostics(fileName) ?? callOriginal()
 
 			let sourceFile = this.context.program.getSourceFile(fileName)
 			if (!sourceFile) {
@@ -255,7 +316,24 @@ export class TSLanguageServiceProxy {
 			}
 
 			// Diagnostics are already in global origin, no need to translate.
-			return modifier.getModified(diagnostics)
+			return this.deduplicateDiagnostics(modifier.getModified(diagnostics))
+		})
+	}
+
+	/** Remove identical diagnostics emitted through overlapping semantic paths. */
+	private deduplicateDiagnostics(diagnostics: TS.Diagnostic[]): TS.Diagnostic[] {
+		let keys = new Set<string>()
+
+		return diagnostics.filter(diagnostic => {
+			let message = ts.flattenDiagnosticMessageText(diagnostic.messageText, '\n')
+			let key = `${diagnostic.file?.fileName ?? ''}:${diagnostic.start}:${diagnostic.length}:${diagnostic.code}:${message}`
+
+			if (keys.has(key)) {
+				return false
+			}
+
+			keys.add(key)
+			return true
 		})
 	}
 
@@ -303,9 +381,19 @@ export class TSLanguageServiceProxy {
 			// Diagnostics are already in global origin, no need to translate.
 			let actions = this.templateService.getCodeFixesAtPosition!(template, startTem, endTem, errorCodes, options, preferences)
 
+			let mirrorActions = this.mirrorService.getCodeFixesAtPosition(
+				fileName,
+				startGlo,
+				endGlo,
+				errorCodes,
+				options,
+				preferences
+			) ?? []
+
 			// Merge original code fixes with template ones.
 			return [
 				...callOriginal(),
+				...mirrorActions,
 				...actions,
 			]
 		})
@@ -336,6 +424,11 @@ export class TSLanguageServiceProxy {
 			let template = this.templateProvider.getTemplateAt(fileName, gloOffset)
 			if (!template) {
 				return callOriginal()
+			}
+
+			let mirrorItems = this.mirrorService.getSignatureHelpItems(fileName, gloOffset, options)
+			if (mirrorItems) {
+				return mirrorItems
 			}
 
 			let temOffset = template.globalOffsetToLocal(gloOffset)
@@ -378,37 +471,19 @@ export class TSLanguageServiceProxy {
 	}
 
 	private wrapGetReferencesAtPosition() {
-		if (
-			!this.templateService.getReferencesAtPosition
-			&& !this.templateService.getSemanticReferencesAtPosition
-			&& !this.templateService.augmentReferences
-		) {
-			return
-		}
-
 		this.wrap('findReferences', (callOriginal, fileName: string, gloOffset: number) => {
+			let mirrorSymbols = this.mirrorService.findReferences(fileName, gloOffset)
+			if (mirrorSymbols && mirrorSymbols.length > 0) {
+				return mirrorSymbols
+			}
+
 			let template = this.templateProvider.getTemplateAt(fileName, gloOffset)
 			if (!template) {
-				let symbols = callOriginal()
-
-				return this.templateService.augmentReferences
-					? this.templateService.augmentReferences(symbols)
-					: symbols
+				return callOriginal()
 			}
 
 			let temOffset = template.globalOffsetToLocal(gloOffset)
 			let withinValueRange = template.isWithinValueRange(temOffset)
-
-			// Resolves Lupos component, property, or binding symbols.
-			let semanticSymbols = this.templateService.getSemanticReferencesAtPosition?.(
-				template,
-				temOffset,
-				gloOffset
-			)
-
-			if (semanticSymbols && semanticSymbols.length > 0) {
-				return semanticSymbols
-			}
 
 			// Resolves generic HTML/CSS document highlighting.
 			let symbols = this.templateService.getReferencesAtPosition?.(template, temOffset, gloOffset)
@@ -436,11 +511,7 @@ export class TSLanguageServiceProxy {
 
 			// Use original reference service when locate in value range.
 			if (withinValueRange && (!symbols || symbols.length === 0)) {
-				let originalSymbols = callOriginal()
-
-				return this.templateService.augmentReferences
-					? this.templateService.augmentReferences(originalSymbols)
-					: originalSymbols
+				return callOriginal()
 			}
 
 			// Replace original references to template ones.
@@ -449,50 +520,17 @@ export class TSLanguageServiceProxy {
 	}
 
 	private wrapGetRenameInfo() {
-		if (!this.templateService.getRenameInfoAtPosition && !this.templateService.modifyRenameInfo) {
-			return
-		}
-
 		this.wrap('getRenameInfo', (callOriginal, fileName: string, gloOffset: number, preferences) => {
-			let template = this.templateProvider.getTemplateAt(fileName, gloOffset)
-			if (!template) {
-				let info = callOriginal()
-
-				return this.templateService.modifyRenameInfo
-					? this.templateService.modifyRenameInfo(fileName, gloOffset, info)
-					: info
+			let mirrorInfo = this.mirrorService.getRenameInfo(fileName, gloOffset, preferences)
+			if (mirrorInfo) {
+				return mirrorInfo
 			}
 
-			let temOffset = template.globalOffsetToLocal(gloOffset)
-
-			// Modify existing rename info and may deny it.
-			if (template.isWithinValueRange(temOffset)) {
-				let info = callOriginal()
-
-				return this.templateService.modifyRenameInfo
-					? this.templateService.modifyRenameInfo(fileName, gloOffset, info)
-					: info
-			}
-
-			// Get template range rename info.
-			let info = this.templateService.getRenameInfoAtPosition!(template, temOffset, preferences)
-			if (!info) {
-				return callOriginal()
-			}
-
-			if (info.canRename) {
-				this.translateTextSpan(info.triggerSpan, template)
-			}
-
-			return info
+			return callOriginal()
 		})
 	}
 
 	private wrapFindRenameLocations() {
-		if (!this.templateService.findRenameLocations && !this.templateService.augmentRenameLocations) {
-			return
-		}
-
 		this.wrap('findRenameLocations', (
 			callOriginal,
 			fileName: string,
@@ -501,33 +539,23 @@ export class TSLanguageServiceProxy {
 			findInComments: boolean,
 			preferences
 		) => {
-			let template = this.templateProvider.getTemplateAt(fileName, gloOffset)
-			if (!template) {
-				let locations = callOriginal()
-
-				return this.templateService.augmentRenameLocations
-					? this.templateService.augmentRenameLocations(fileName, gloOffset, locations)
-					: locations
-			}
-
-			// Augment rename locations to add location from template.
-			let temOffset = template.globalOffsetToLocal(gloOffset)
-			if (template.isWithinValueRange(temOffset)) {
-				let locations = callOriginal()
-
-				return this.templateService.augmentRenameLocations
-					? this.templateService.augmentRenameLocations(fileName, gloOffset, locations)
-					: locations
-			}
-
-			// Get rename locations directly from template.
-			return this.templateService.findRenameLocations!(
-				template,
-				temOffset,
+			let mirrorLocations = this.mirrorService.findRenameLocations(
+				fileName,
+				gloOffset,
 				findInStrings,
 				findInComments,
 				preferences
 			)
+			if (mirrorLocations) {
+				return mirrorLocations
+			}
+
+			let mirrorInfo = this.mirrorService.getRenameInfo(fileName, gloOffset)
+			if (mirrorInfo && !mirrorInfo.canRename) {
+				return undefined
+			}
+
+			return callOriginal()
 		})
 	}
 
@@ -552,6 +580,14 @@ export class TSLanguageServiceProxy {
 
 			// Replace original closing tag to template ones.
 			return info
+		})
+	}
+
+	/** Dispose mirror resources with the decorated TypeScript service. */
+	private wrapDispose() {
+		this.wrap('dispose', callOriginal => {
+			this.mirrorService.dispose()
+			return callOriginal()
 		})
 	}
 }

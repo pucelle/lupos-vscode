@@ -2,13 +2,11 @@ import {CompletionItem} from '../../complete-data'
 import {ts} from '../../core'
 import {TemplatePart, TemplatePartPiece, TemplatePartPieceType, TemplatePartType, TemplateSlotPlaceholder} from '../../lupos-ts-module'
 import type TS from 'typescript'
-import {DefinitionItem} from './definition-converter'
-import {QuickInfoItem} from './quick-info-converter'
 
 
 /** For completion. */
 export function getScriptElementKind(
-	item: CompletionItem | DefinitionItem | QuickInfoItem,
+	item: CompletionItem,
 	part: TemplatePart | undefined,
 	piece: TemplatePartPiece
 ): TS.ScriptElementKind {

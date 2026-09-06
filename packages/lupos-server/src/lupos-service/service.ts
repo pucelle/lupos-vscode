@@ -2,59 +2,72 @@ import type TS from 'typescript'
 import {WorkSpaceAnalyzer} from './analyzer/analyzer'
 import {LuposCompletion} from './completion'
 import {LuposQuickInfo} from './quick-info'
-import {LuposDefinition} from './definition'
 import {ProjectContext} from '../core'
 import {Template} from '../template-service'
 import {DiagnosticModifier, getTemplatePartPieceAt, TemplateDiagnostics} from '../lupos-ts-module'
 import {LuposCodeFixes} from './code-fixes'
-import {LuposRename} from './rename'
-import {TemplateProvider} from '../template-service/template-provider'
-import {LuposReferences} from './references'
 
 
 /** Provide lupos language service for a single. */
 export class LuposService {
 
+	/** Shared project context. */
 	readonly context: ProjectContext
 
-	private analyzer: WorkSpaceAnalyzer
-	private completion: LuposCompletion
-	private quickInfo: LuposQuickInfo
-	private definition: LuposDefinition
-	private diagnostics: TemplateDiagnostics
-	private codeFixes: LuposCodeFixes
-	private rename: LuposRename
-	private references: LuposReferences
-	private freshing: boolean = false
+	/** Program owning the current analyzer and feature services. */
+	private program: TS.Program
 
-	constructor(context: ProjectContext, templateProvider: TemplateProvider) {
+	/** Current workspace analyzer. */
+	private analyzer!: WorkSpaceAnalyzer
+
+	/** Template completion provider. */
+	private completion!: LuposCompletion
+
+	/** Template quick-info provider. */
+	private quickInfo!: LuposQuickInfo
+
+	/** Structural template diagnostic provider. */
+	private diagnostics!: TemplateDiagnostics
+
+	/** Lupos-specific code-fix provider. */
+	private codeFixes!: LuposCodeFixes
+
+	/** Program revision already loaded into the workspace analyzer. */
+	private analyzedProgram: TS.Program | null = null
+
+	constructor(context: ProjectContext) {
 		this.context = context
-		this.analyzer = new WorkSpaceAnalyzer(context)
+		this.program = context.program
+		this.initializeServices()
+	}
+
+	/** Recreate analyzer-backed services for the current Program and checker. */
+	private initializeServices() {
+		this.analyzer = new WorkSpaceAnalyzer(this.context)
 		this.completion = new LuposCompletion(this.analyzer)
-		this.quickInfo = new LuposQuickInfo(this.analyzer)
-		this.definition = new LuposDefinition(this.analyzer)
+		this.quickInfo = new LuposQuickInfo()
 		this.diagnostics = new TemplateDiagnostics(this.analyzer)
 		this.codeFixes = new LuposCodeFixes(this.analyzer)
-		this.rename = new LuposRename(this.analyzer, templateProvider)
-		this.references = new LuposReferences(this.analyzer, templateProvider)
 	}
 
 	/** Make sure to reload changed source files. */
 	private beFresh() {
-		if (this.freshing) {
+		let program = this.context.program
+		if (program !== this.program) {
+			this.program = program
+			this.analyzedProgram = null
+			this.initializeServices()
+		}
+
+		if (this.analyzedProgram === program) {
 			return
 		}
 
-		// Keep fresh for a micro task tick after updated.
 		this.analyzer.update()
-		this.freshing = true
-
-		Promise.resolve().then(() => {
-			this.freshing = false
-		})
+		this.analyzedProgram = program
 	}
 
-	getCompletionInfo(template: Template, temOffset: number, gloOffset: number): TS.CompletionInfo | undefined {
+	getCompletionInfo(template: Template, temOffset: number): TS.CompletionInfo | undefined {
 		let part = template.getPartAt(temOffset)
 		if (!part) {
 			return undefined
@@ -67,10 +80,10 @@ export class LuposService {
 
 		this.beFresh()
 
-		return this.completion.getCompletionInfo(part, piece, template, gloOffset)
+		return this.completion.getCompletionInfo(part, piece, template)
 	}
 
-	getCompletionEntryDetails(template: Template, temOffset: number, gloOffset: number, name: string): TS.CompletionEntryDetails | undefined {
+	getCompletionEntryDetails(template: Template, temOffset: number, name: string): TS.CompletionEntryDetails | undefined {
 		let part = template.getPartAt(temOffset)
 		if (!part) {
 			return undefined
@@ -83,26 +96,10 @@ export class LuposService {
 
 		this.beFresh()
 
-		return this.completion.getCompletionEntryDetails(part, piece, template, gloOffset, name)
+		return this.completion.getCompletionEntryDetails(part, piece, template, name)
 	}
 
-	getQuickInfo(template: Template, temOffset: number, gloOffset: number): TS.QuickInfo | undefined {
-		let part = template.getPartAt(temOffset)
-		if (!part) {
-			return undefined
-		}
-
-		let piece = getTemplatePartPieceAt(part, temOffset)
-		if (!piece) {
-			return undefined
-		}
-
-		this.beFresh()
-		
-		return this.quickInfo.getQuickInfo(part, piece, template, gloOffset)
-	}
-
-	getDefinition(template: Template, temOffset: number, gloOffset: number): TS.DefinitionInfoAndBoundSpan | undefined {
+	getQuickInfo(template: Template, temOffset: number): TS.QuickInfo | undefined {
 		let part = template.getPartAt(temOffset)
 		if (!part) {
 			return undefined
@@ -115,7 +112,7 @@ export class LuposService {
 
 		this.beFresh()
 		
-		return this.definition.getDefinition(part, piece, template, gloOffset)
+		return this.quickInfo.getQuickInfo(part, piece)
 	}
 
 	modifyDiagnostics(template: Template, modifier: DiagnosticModifier) {
@@ -123,84 +120,6 @@ export class LuposService {
 		this.diagnostics.diagnoseHTMLSyntax(template, modifier)
 		this.diagnostics.diagnoseFunctionContextTemplate(template, modifier)
 		this.diagnostics.diagnose(template.parts, template, modifier)
-	}
-
-	augmentReferences(symbols: TS.ReferencedSymbol[] | undefined) {
-		this.beFresh()
-		return this.references.augment(symbols)
-	}
-
-	getReferences(template: Template, temOffset: number) {
-		let part = template.getPartAt(temOffset)
-		if (!part) {
-			return undefined
-		}
-
-		let piece = getTemplatePartPieceAt(part, temOffset)
-		if (!piece) {
-			return undefined
-		}
-
-		this.beFresh()
-		return this.references.findReferences(part, piece, template)
-	}
-
-	modifyRenameInfo(fileName: string, position: number, info: TS.RenameInfo) {
-		this.beFresh()
-		return this.rename.modifyRenameInfo(fileName, position, info)
-	}
-
-	augmentRenameLocations(
-		fileName: string,
-		position: number,
-		locations: readonly TS.RenameLocation[] | undefined
-	) {
-		this.beFresh()
-		return this.rename.augmentRenameLocations(fileName, position, locations)
-	}
-
-	getRenameInfo(template: Template, temOffset: number, preferences?: TS.UserPreferences | TS.RenameInfoOptions) {
-		let part = template.getPartAt(temOffset)
-		if (!part) {
-			return undefined
-		}
-
-		let piece = getTemplatePartPieceAt(part, temOffset)
-		if (!piece) {
-			return undefined
-		}
-
-		this.beFresh()
-		return this.rename.getRenameInfo(part, piece, template, preferences)
-	}
-
-	findRenameLocations(
-		template: Template,
-		temOffset: number,
-		findInStrings: boolean,
-		findInComments: boolean,
-		preferences?: boolean | TS.UserPreferences
-	) {
-		let part = template.getPartAt(temOffset)
-		if (!part) {
-			return undefined
-		}
-
-		let piece = getTemplatePartPieceAt(part, temOffset)
-		if (!piece) {
-			return undefined
-		}
-
-		this.beFresh()
-		
-		return this.rename.findRenameLocations(
-			part,
-			piece,
-			template,
-			findInStrings,
-			findInComments,
-			preferences
-		)
 	}
 
 	getCodeFixesAtPosition(template: Template, temOffset: number, errorCodes: ReadonlyArray<number>): TS.CodeFixAction[] | undefined {

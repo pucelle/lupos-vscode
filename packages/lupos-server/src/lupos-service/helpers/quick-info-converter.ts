@@ -1,18 +1,12 @@
 import type TS from 'typescript'
 import {getScriptElementKind, getSymbolDisplayPartKind} from './kind'
-import {Helper, TemplatePart, TemplatePartPiece, TemplatePartPieceType, TemplatePartType} from '../../lupos-ts-module'
+import {TemplatePart, TemplatePartPiece, TemplatePartPieceType} from '../../lupos-ts-module'
+import {CompletionItem} from '../../complete-data'
+import {ts} from '../../core'
 
 
-export interface QuickInfoItem {
-	readonly name: string
-	readonly description: string
-	readonly nameNode?: TS.Node
-	readonly kind?: TS.ScriptElementKind
-}
-
-
-export function makeQuickInfo(item: QuickInfoItem | undefined, part: TemplatePart, piece: TemplatePartPiece, helper: Helper): TS.QuickInfo | undefined{
-	if (!item || (!item.nameNode && !item.description)) {
+export function makeQuickInfo(item: CompletionItem | undefined, part: TemplatePart, piece: TemplatePartPiece): TS.QuickInfo | undefined{
+	if (!item?.description) {
 		return undefined
 	}
 
@@ -40,16 +34,8 @@ export function makeQuickInfo(item: QuickInfoItem | undefined, part: TemplatePar
 		headerText = (part.namePrefix || '') + part.mainName!
 	}
 
-	if (item.nameNode) {
-		if (piece.type === TemplatePartPieceType.Name && part.type !== TemplatePartType.Binding
-			|| piece.type === TemplatePartPieceType.AttrValue
-		) {
-			headerText += ': ' + helper.types.getTypeFullText(helper.types.typeOf(item.nameNode))
-		}
-	}
-
 	headers.push({
-		kind: helper.ts.SymbolDisplayPartKind[getSymbolDisplayPartKind(part, piece)],
+		kind: ts.SymbolDisplayPartKind[getSymbolDisplayPartKind(part, piece)],
 		text: headerText,
 	})
 

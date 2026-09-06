@@ -30,12 +30,12 @@ export class LuposPlugin implements TS.server.PluginModule {
 		setGlobalContext(this.ts)
 
 		let project = info.project
+		let typescript = this.ts
 		let programGetter = () => info.languageService.getProgram()!
-		let typeCheckerGetter = () => programGetter().getTypeChecker()
-		let helper = helperOfContext(this.ts, typeCheckerGetter)
 
 		let context: ProjectContext = {
 			service: info.languageService,
+			languageServiceHost: info.languageServiceHost,
 			project,
 
 			// Must get it dynamically.
@@ -43,9 +43,11 @@ export class LuposPlugin implements TS.server.PluginModule {
 				return programGetter()
 			},
 			get typeChecker() {
-				return typeCheckerGetter()
+				return programGetter().getTypeChecker()
 			},
-			helper,
+			get helper() {
+				return helperOfContext(typescript, programGetter())
+			},
 		}
 
 		Logger.initialize(info.project.projectService.logger)

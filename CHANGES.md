@@ -7,6 +7,7 @@
 - Support html syntax and the only `<template>` returned diagnostics.
 - Fix closing a tag in html template cause indentation loss.
 - Support component, property, binding renaming.
+- New typescript mirror to support full typescript language syntaxes within template.
 
 
 # 1.2.0

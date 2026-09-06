@@ -5,13 +5,22 @@ const LuposTypes = `
 declare module 'lupos.html' {
 	export function html(strings: TemplateStringsArray, ...values: unknown[]): unknown
 	export function css(strings: TemplateStringsArray, ...values: unknown[]): unknown
-	export class Component<Events = {}> {}
+	export class Component<Events = {}> {
+		el: HTMLElement
+		on<K extends keyof Events>(name: K, handler: (event: Events[K]) => void, context?: unknown): void
+	}
 	export interface Binding {}
+	export type EventHandlerMixed = (event: Event) => void
+	export class on {
+		constructor(element: Element, context: unknown)
+		update(name: string, handler: EventHandlerMixed | null): void
+	}
 }
 `
 
 export interface TestLanguageService {
 	fileName: string
+	host: ts.LanguageServiceHost
 	service: ts.LanguageService
 	update(text: string): void
 	read(fileName?: string): string
@@ -51,12 +60,15 @@ export function createTestLanguageService(text: string, extraFiles: Record<strin
 	let logger = {info() {}} as ts.server.Logger
 	let info = {
 		languageService: rawService,
+		languageServiceHost: host,
+		serverHost: ts.sys,
 		project: {projectService: {logger}},
 	} as ts.server.PluginCreateInfo
 	let service = pluginFactory({typescript: ts}).create(info)
 
 	return {
 		fileName,
+		host,
 		service,
 		update(newText) {
 			let file = files.get(fileName)!

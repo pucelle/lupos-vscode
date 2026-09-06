@@ -53,6 +53,38 @@ describe('server semantic diagnostics', () => {
 		]))
 	})
 
+	it('reports a closing tag missing its final angle bracket', () => {
+		let source = `import {html} from 'lupos.html'
+			const view = html\`<template>
+				<div>content</div
+				<slot />
+			</template>\``
+		let {service, fileName} = createTestLanguageService(source)
+		let diagnostics = service.getSemanticDiagnostics(fileName)
+
+		expect(diagnostics).toContainEqual(expect.objectContaining({
+			code: 30008,
+			category: ts.DiagnosticCategory.Warning,
+			messageText: "Closing tag '</div' is missing '>'.",
+			start: source.indexOf('</div') + 2,
+			length: 3,
+		}))
+	})
+
+	it('reports a closing tag ending with the template', () => {
+		let source = `import {html} from 'lupos.html'
+			const view = html\`<div></div\``
+		let {service, fileName} = createTestLanguageService(source)
+		let diagnostics = service.getSemanticDiagnostics(fileName)
+
+		expect(diagnostics).toContainEqual(expect.objectContaining({
+			code: 30008,
+			messageText: "Closing tag '</div' is missing '>'.",
+			start: source.indexOf('</div') + 2,
+			length: 3,
+		}))
+	})
+
 	it('requires a root template to be the function only return value', () => {
 		let source = `import {html} from 'lupos.html'
 			function render(alternate: boolean) {
