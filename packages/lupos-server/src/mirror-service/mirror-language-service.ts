@@ -127,10 +127,13 @@ export class MirrorLanguageService {
 		let document = sourceFile.isDeclarationFile
 			? null
 			: buildTypeScriptMirror(ts, this.context.program, sourceFile)
+
 		let originalSnapshot = originalHost.getScriptSnapshot(sourceFile.fileName)
+
 		let snapshot = document
 			? ts.ScriptSnapshot.fromString(document.mirrorText)
 			: originalSnapshot ?? ts.ScriptSnapshot.fromString(sourceFile.text)
+			
 		let source = {
 			sourceFile,
 			sourceText: sourceFile.text,

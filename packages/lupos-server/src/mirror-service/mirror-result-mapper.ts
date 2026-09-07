@@ -57,6 +57,7 @@ export class MirrorResultMapper {
 		}
 
 		let textSpan = this.mirror.mapSpan(fileName, result.textSpan, 'definition')
+		
 		let definitions = result.definitions
 			?.map(definition => this.mapDocumentSpan(definition, 'definition'))
 			.filter((definition): definition is TS.DefinitionInfo => !!definition)
@@ -107,6 +108,7 @@ export class MirrorResultMapper {
 		}
 
 		let seen = new Set<string>()
+
 		return locations.map(location => this.mapDocumentSpan(location, 'rename'))
 			.filter((location): location is TS.RenameLocation => {
 				if (!location) {
