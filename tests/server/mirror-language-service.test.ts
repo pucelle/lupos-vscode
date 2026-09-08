@@ -1,6 +1,7 @@
 import {describe, expect, it, vi} from 'vitest'
 import ts from 'typescript'
 import {MirrorService} from '../../packages/lupos-server/src/mirror-service'
+import {isMirrorableSourceFile} from '../../packages/lupos-server/src/mirror-service/mirror-language-service'
 import {createTestLanguageService, diagnosticMessages} from './language-service'
 
 
@@ -13,6 +14,26 @@ function findDiagnostic(diagnostics: readonly ts.Diagnostic[], message: string) 
 
 
 describe('server mirror language service', {timeout: 15_000}, () => {
+	it('only mirrors application source files', () => {
+		let applicationSource = ts.createSourceFile('C:/project/main.ts', '', ts.ScriptTarget.ESNext)
+		let declarationSource = ts.createSourceFile('C:/project/types.d.ts', '', ts.ScriptTarget.ESNext)
+		let defaultLibrarySource = ts.createSourceFile('C:/typescript/lib/lib.esnext.d.ts', '', ts.ScriptTarget.ESNext)
+		let externalSource = ts.createSourceFile('C:/project/node_modules/example/index.js', '', ts.ScriptTarget.ESNext)
+		let program = {
+			isSourceFileDefaultLibrary(sourceFile: ts.SourceFile) {
+				return sourceFile === defaultLibrarySource
+			},
+			isSourceFileFromExternalLibrary(sourceFile: ts.SourceFile) {
+				return sourceFile === externalSource
+			},
+		} as ts.Program
+
+		expect(isMirrorableSourceFile(program, applicationSource)).toBe(true)
+		expect(isMirrorableSourceFile(program, declarationSource)).toBe(false)
+		expect(isMirrorableSourceFile(program, defaultLibrarySource)).toBe(false)
+		expect(isMirrorableSourceFile(program, externalSource)).toBe(false)
+	})
+
 	it('does not start mirror completion for template markup', () => {
 		let source = `import {html, Component} from 'lupos.html'
 			class Card extends Component {}

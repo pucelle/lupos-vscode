@@ -124,9 +124,9 @@ export class MirrorLanguageService {
 			return cached
 		}
 
-		let document = sourceFile.isDeclarationFile
-			? null
-			: buildTypeScriptMirror(ts, this.context.program, sourceFile)
+		let document = isMirrorableSourceFile(this.context.program, sourceFile)
+			? buildTypeScriptMirror(ts, this.context.program, sourceFile)
+			: null
 
 		let originalSnapshot = originalHost.getScriptSnapshot(sourceFile.fileName)
 
@@ -163,4 +163,12 @@ export class MirrorLanguageService {
 
 		return canonicalize(ts.sys.resolvePath(fileName)).replace(/\\/g, '/')
 	}
+}
+
+
+/** Whether a source belongs to the application and may require a mirror. */
+function isMirrorableSourceFile(program: TS.Program, sourceFile: TS.SourceFile): boolean {
+	return !sourceFile.isDeclarationFile
+		&& !program.isSourceFileDefaultLibrary(sourceFile)
+		&& !program.isSourceFileFromExternalLibrary(sourceFile)
 }
