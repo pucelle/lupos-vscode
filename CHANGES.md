@@ -1,6 +1,12 @@
 # Changes
 
 
+# 1.3.1
+
+- Ignore `${}` within html comments.
+- Ignore mirroring lib ts files.
+
+
 # 1.3.0
 
 - html`...`, when input the last '`', vscode will auto complete it to '``', and we will delete one.
