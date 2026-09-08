@@ -167,7 +167,7 @@ export class MirrorLanguageService {
 
 
 /** Whether a source belongs to the application and may require a mirror. */
-function isMirrorableSourceFile(program: TS.Program, sourceFile: TS.SourceFile): boolean {
+export function isMirrorableSourceFile(program: TS.Program, sourceFile: TS.SourceFile): boolean {
 	return !sourceFile.isDeclarationFile
 		&& !program.isSourceFileDefaultLibrary(sourceFile)
 		&& !program.isSourceFileFromExternalLibrary(sourceFile)
