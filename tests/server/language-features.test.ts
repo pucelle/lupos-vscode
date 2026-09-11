@@ -53,4 +53,28 @@ describe('server language features', () => {
 		expect(definition?.definitions?.[0].fileName).toBe(fileName)
 		expect(definition?.definitions?.[0].textSpan.start).toBe(Source.indexOf('Card extends'))
 	})
+
+	it('returns both definitions for a component event name', () => {
+		let source = `
+import {html, Component} from 'lupos.html'
+interface CardEvents {
+	save: string
+}
+class Card extends Component<CardEvents> {}
+const view = html\`<Card @save=\${event => event} />\`
+`
+		let {service, fileName} = createTestLanguageService(source)
+		let position = source.indexOf('@save') + 2
+		let eventDeclaration = source.indexOf('save: string')
+		let definitions = service.getDefinitionAtPosition(fileName, position)
+		let definitionAndSpan = service.getDefinitionAndBoundSpan(fileName, position)
+
+		expect(definitions?.[0].fileName).toBe(fileName)
+		expect(definitions?.[0].textSpan.start).toBe(eventDeclaration)
+		expect(definitionAndSpan?.definitions?.[0].textSpan.start).toBe(eventDeclaration)
+		expect(definitionAndSpan?.textSpan).toEqual({
+			start: source.indexOf('@save'),
+			length: 5,
+		})
+	})
 })

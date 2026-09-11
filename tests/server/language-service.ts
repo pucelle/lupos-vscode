@@ -5,7 +5,8 @@ const LuposTypes = `
 declare module 'lupos.html' {
 	export function html(strings: TemplateStringsArray, ...values: unknown[]): unknown
 	export function css(strings: TemplateStringsArray, ...values: unknown[]): unknown
-	export class Component<Events = {}> {
+	export class EventFirer<Events = {}> {}
+	export class Component<Events = {}> extends EventFirer<Events> {
 		el: HTMLElement
 		on<K extends keyof Events>(name: K, handler: (event: Events[K]) => void, context?: unknown): void
 	}

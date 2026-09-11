@@ -2,9 +2,15 @@ import type TS from 'typescript'
 import {WorkSpaceAnalyzer} from './analyzer/analyzer'
 import {LuposCompletion} from './completion'
 import {LuposQuickInfo} from './quick-info'
-import {ProjectContext} from '../core'
+import {ProjectContext, ts} from '../core'
 import {Template} from '../template-service'
-import {DiagnosticModifier, getTemplatePartPieceAt, TemplateDiagnostics} from '../lupos-ts-module'
+import {
+	DiagnosticModifier,
+	getTemplatePartPieceAt,
+	TemplateDiagnostics,
+	TemplatePartPieceType,
+	TemplatePartType,
+} from '../lupos-ts-module'
 import {LuposCodeFixes} from './code-fixes'
 
 
@@ -113,6 +119,52 @@ export class LuposService {
 		this.beFresh()
 		
 		return this.quickInfo.getQuickInfo(part, piece)
+	}
+
+	/** Get a component event definition that TypeScript cannot infer from the mirror string argument. */
+	getEventDefinition(template: Template, temOffset: number): TS.DefinitionInfoAndBoundSpan | undefined {
+		let part = template.getPartAt(temOffset)
+		if (!part || part.type !== TemplatePartType.Event) {
+			return undefined
+		}
+
+		let piece = getTemplatePartPieceAt(part, temOffset)
+		if (!piece || piece.type !== TemplatePartPieceType.Name) {
+			return undefined
+		}
+
+		this.beFresh()
+
+		let component = this.analyzer.getComponentByTagName(part.node.tagName!, template)
+		
+		let event = component
+			? this.analyzer.getComponentEvent(component, part.mainName!)
+			: undefined
+
+		if (!event) {
+			return undefined
+		}
+
+		let nameNode = event.nameNode
+		let sourceFile = nameNode.getSourceFile()
+
+		return {
+			definitions: [{
+				fileName: sourceFile.fileName,
+				textSpan: {
+					start: nameNode.getStart(sourceFile),
+					length: nameNode.getWidth(sourceFile),
+				},
+				kind: ts.ScriptElementKind.functionElement,
+				name: event.name,
+				containerName: sourceFile.fileName,
+				containerKind: ts.ScriptElementKind.scriptElement,
+			}],
+			textSpan: {
+				start: template.localOffsetToGlobal(piece.start),
+				length: piece.end - piece.start,
+			},
+		}
 	}
 
 	modifyDiagnostics(template: Template, modifier: DiagnosticModifier) {

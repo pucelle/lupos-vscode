@@ -34,6 +34,18 @@ export interface TemplateLanguageService {
 		gloOffset: number,
 	): TS.QuickInfo | undefined
 
+	getDefinitionAtPosition?(
+		template: Template,
+		temOffset: number,
+		gloOffset: number,
+	): readonly TS.DefinitionInfo[] | undefined
+
+	getDefinitionAndBoundSpan?(
+		template: Template,
+		temOffset: number,
+		gloOffset: number,
+	): TS.DefinitionInfoAndBoundSpan | undefined
+
 	getSyntacticDiagnostics?(
 		template: Template
 	): TS.Diagnostic[]

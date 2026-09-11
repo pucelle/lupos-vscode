@@ -247,6 +247,18 @@ export class TSLanguageServiceProxy {
 				return callOriginal()
 			}
 
+			let temOffset = template.globalOffsetToLocal(gloOffset)
+
+			let templateDefinitions = this.templateService.getDefinitionAtPosition?.(
+				template,
+				temOffset,
+				gloOffset
+			)
+			
+			if (templateDefinitions && templateDefinitions.length > 0) {
+				return [...templateDefinitions]
+			}
+
 			let mirrorDefinitions = this.mirrorService.getDefinitionAtPosition(fileName, gloOffset)
 			if (mirrorDefinitions && mirrorDefinitions.length > 0) {
 				return [...mirrorDefinitions]
@@ -261,6 +273,16 @@ export class TSLanguageServiceProxy {
 			let template = this.templateProvider.getTemplateAt(fileName, gloOffset)
 			if (!template) {
 				return callOriginal()
+			}
+
+			let temOffset = template.globalOffsetToLocal(gloOffset)
+			let templateResult = this.templateService.getDefinitionAndBoundSpan?.(
+				template,
+				temOffset,
+				gloOffset
+			)
+			if (templateResult?.definitions && templateResult.definitions.length > 0) {
+				return templateResult
 			}
 
 			let mirrorResult = this.mirrorService.getDefinitionAndBoundSpan(fileName, gloOffset)

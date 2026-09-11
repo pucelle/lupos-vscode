@@ -121,6 +121,21 @@ export class TemplateServiceRouter implements TemplateLanguageService {
 		return undefined
 	}
 
+	/** Get definitions supplied by template syntax rather than the TypeScript mirror. */
+	getDefinitionAtPosition(template: Template, temOffset: number, _gloOffset: number): readonly TS.DefinitionInfo[] | undefined {
+		return this.getDefinitionAndBoundSpan(template, temOffset, _gloOffset)?.definitions
+	}
+
+	/** Get a definition and template-bound source span for component events. */
+	getDefinitionAndBoundSpan(template: Template, temOffset: number, _gloOffset: number): TS.DefinitionInfoAndBoundSpan | undefined {
+		let region = template.embedded.getRegionAt(temOffset)
+		if (region.languageId !== 'html') {
+			return undefined
+		}
+
+		return this.luposService.getEventDefinition(template, temOffset)
+	}
+
 	getOutliningSpans(template: Template): TS.OutliningSpan[] {
 		let region = template.embedded.getWholeTemplateRegion()
 		let ranges: vscode.FoldingRange[] = []
