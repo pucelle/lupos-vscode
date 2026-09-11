@@ -31,6 +31,9 @@ export class MirrorLanguageService {
 	/** Mirror sources reused across equivalent TypeScript Program revisions. */
 	private readonly sourcesByFile: Map<string, MirrorSource> = new Map()
 
+	/** Real Program revision represented by the retained mirror sources. */
+	private sourcesProgram: TS.Program | null = null
+
 	/** Mirror host delegating project behavior to tsserver. */
 	private readonly host: TS.LanguageServiceHost
 
@@ -83,6 +86,8 @@ export class MirrorLanguageService {
 	/** Dispose the secondary TypeScript language service. */
 	dispose() {
 		this.service.dispose()
+		this.sourcesByFile.clear()
+		this.sourcesProgram = null
 	}
 
 	/** Create an overlay host while retaining tsserver project behavior. */
@@ -105,9 +110,17 @@ export class MirrorLanguageService {
 
 	/** Get a mirror snapshot or delegate files outside the current Program. */
 	private getSnapshot(fileName: string, originalHost: TS.LanguageServiceHost): TS.IScriptSnapshot | undefined {
-		let sourceFile = this.context.program.getSourceFile(fileName)
+		let program = this.context.program
+		this.pruneSources(program)
+
+		let sourceFile = program.getSourceFile(fileName)
 		if (!sourceFile) {
 			return originalHost.getScriptSnapshot(fileName)
+		}
+
+		if (!isMirrorableSourceFile(program, sourceFile)) {
+			return originalHost.getScriptSnapshot(fileName)
+				?? ts.ScriptSnapshot.fromString(sourceFile.text)
 		}
 
 		let source = this.getMirrorSource(sourceFile, originalHost)
@@ -124,9 +137,7 @@ export class MirrorLanguageService {
 			return cached
 		}
 
-		let document = isMirrorableSourceFile(this.context.program, sourceFile)
-			? buildTypeScriptMirror(ts, this.context.program, sourceFile)
-			: null
+		let document = buildTypeScriptMirror(ts, this.context.program, sourceFile)
 
 		let originalSnapshot = originalHost.getScriptSnapshot(sourceFile.fileName)
 
@@ -147,12 +158,34 @@ export class MirrorLanguageService {
 
 	/** Get the mirror document for a file in the current real Program. */
 	private getDocument(fileName: string): MirrorDocument | null {
-		let sourceFile = this.context.program.getSourceFile(fileName)
-		if (!sourceFile) {
+		let program = this.context.program
+		this.pruneSources(program)
+
+		let sourceFile = program.getSourceFile(fileName)
+		if (!sourceFile || !isMirrorableSourceFile(program, sourceFile)) {
 			return null
 		}
 
 		return this.getMirrorSource(sourceFile, this.context.languageServiceHost).document
+	}
+
+	/** Remove mirror sources that no longer belong to the current real Program. */
+	private pruneSources(program: TS.Program) {
+		if (program === this.sourcesProgram) {
+			return
+		}
+
+		this.sourcesProgram = program
+
+		let currentFiles = new Set(
+			program.getSourceFiles().map(sourceFile => this.canonicalize(sourceFile.fileName))
+		)
+
+		for (let fileName of this.sourcesByFile.keys()) {
+			if (!currentFiles.has(fileName)) {
+				this.sourcesByFile.delete(fileName)
+			}
+		}
 	}
 
 	/** Canonicalize a filename using the real project host policy. */

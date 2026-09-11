@@ -1,7 +1,11 @@
 import {describe, expect, it, vi} from 'vitest'
 import ts from 'typescript'
+import {setGlobalContext, type ProjectContext} from '../../packages/lupos-server/src/core'
 import {MirrorService} from '../../packages/lupos-server/src/mirror-service'
-import {isMirrorableSourceFile} from '../../packages/lupos-server/src/mirror-service/mirror-language-service'
+import {
+	isMirrorableSourceFile,
+	MirrorLanguageService,
+} from '../../packages/lupos-server/src/mirror-service/mirror-language-service'
 import {createTestLanguageService, diagnosticMessages} from './language-service'
 
 
@@ -10,6 +14,11 @@ function findDiagnostic(diagnostics: readonly ts.Diagnostic[], message: string) 
 	return diagnostics.find(diagnostic => {
 		return ts.flattenDiagnosticMessageText(diagnostic.messageText, '\n').includes(message)
 	})
+}
+
+/** Private mirror state inspected to verify retained source lifetimes. */
+interface MirrorCacheState {
+	sourcesByFile: Map<string, unknown>
 }
 
 
@@ -32,6 +41,48 @@ describe('server mirror language service', {timeout: 15_000}, () => {
 		expect(isMirrorableSourceFile(program, declarationSource)).toBe(false)
 		expect(isMirrorableSourceFile(program, defaultLibrarySource)).toBe(false)
 		expect(isMirrorableSourceFile(program, externalSource)).toBe(false)
+	})
+
+	it('does not retain non-mirrorable sources and releases stale sources', () => {
+		setGlobalContext(ts)
+
+		let applicationSource = ts.createSourceFile('C:/project/main.ts', '', ts.ScriptTarget.ESNext)
+		let declarationSource = ts.createSourceFile('C:/project/types.d.ts', '', ts.ScriptTarget.ESNext)
+		let externalSource = ts.createSourceFile('C:/project/node_modules/example/index.js', '', ts.ScriptTarget.ESNext)
+		let sourceFiles = [applicationSource, declarationSource, externalSource]
+		let program = makeProgram(sourceFiles, externalSource)
+		let host: ts.LanguageServiceHost = {
+			getCompilationSettings: () => ({}),
+			getCurrentDirectory: () => 'C:/project',
+			getDefaultLibFileName: options => ts.getDefaultLibFilePath(options),
+			getScriptFileNames: () => [],
+			getScriptSnapshot: () => undefined,
+			getScriptVersion: () => '0',
+			useCaseSensitiveFileNames: () => false,
+		}
+		let context = {
+			languageServiceHost: host,
+			get program() {
+				return program
+			},
+		} as unknown as ProjectContext
+		let mirror = new MirrorLanguageService(context)
+		let cache = (mirror as unknown as MirrorCacheState).sourcesByFile
+
+		expect(mirror.hasDocument(declarationSource.fileName)).toBe(false)
+		expect(mirror.hasDocument(externalSource.fileName)).toBe(false)
+		expect(cache.size).toBe(0)
+
+		cache.set('c:/project/main.ts', {})
+		program = makeProgram([declarationSource, externalSource], externalSource)
+		mirror.hasDocument(declarationSource.fileName)
+
+		expect(cache.size).toBe(0)
+
+		cache.set('c:/project/main.ts', {})
+		mirror.dispose()
+
+		expect(cache.size).toBe(0)
 	})
 
 	it('does not start mirror completion for template markup', () => {
@@ -229,3 +280,22 @@ describe('server mirror language service', {timeout: 15_000}, () => {
 		})
 	})
 })
+
+
+/** Make the Program surface needed by mirror cache eligibility and pruning. */
+function makeProgram(sourceFiles: ts.SourceFile[], externalSource: ts.SourceFile): ts.Program {
+	return {
+		getSourceFile(fileName: string) {
+			return sourceFiles.find(sourceFile => sourceFile.fileName === fileName)
+		},
+		getSourceFiles() {
+			return sourceFiles
+		},
+		isSourceFileDefaultLibrary() {
+			return false
+		},
+		isSourceFileFromExternalLibrary(sourceFile: ts.SourceFile) {
+			return sourceFile === externalSource
+		},
+	} as unknown as ts.Program
+}
