@@ -1,6 +1,11 @@
 # Changes
 
 
+# 1.3.2
+
+- Support deconstructed syntax for `lu:for` like `<lu:for ${[a, b]} of ...>` or `<lu:for ${{a, b}} of ...>`.
+
+
 # 1.3.1
 
 - Ignore `${}` within html comments.
