@@ -212,9 +212,18 @@ async function autoInsertTemplateSlot(start: number, insertedText: string) {
 		// Input `\n` inside a `<...>`, add a tab to the new line.
 		if (tagStartLine) {
 			let tagIndentCount = getIndentCount(tagStartLine)
-			
-	
-			if (insertIndentCount <= tagIndentCount && !(charAfter === '>' || charsAfter === '/>')) {
+
+			if (charsAfter === '/>' && insertIndentCount > tagIndentCount) {
+				let endPosition = document.positionAt(end)
+				let alignedPosition = document.positionAt(end - (insertIndentCount - tagIndentCount))
+
+				await editor.edit(editBuilder => {
+					editBuilder.delete(new vscode.Range(alignedPosition, endPosition))
+				})
+
+				editor.selection = new vscode.Selection(alignedPosition, alignedPosition)
+			}
+			else if (insertIndentCount <= tagIndentCount && !(charAfter === '>' || charsAfter === '/>')) {
 				let insertTab = '\t'.repeat(insertIndentCount + 1 - tagIndentCount)
 				let insertTabPosition = document.positionAt(start + insertedText.length)
 
@@ -265,20 +274,20 @@ async function autoInsertTemplateSlot(start: number, insertedText: string) {
 	}
 }
 
-/** Get `<...` at same line, or at previous line if current line is totally white spaces. */
+/** Find the opening line of the unfinished tag before a line break. */
 function getPreviousTagStartLine(position: vscode.Position, document: vscode.TextDocument): string | null {
-	let startLine = document.lineAt(position).text
+	for (let lineNumber = position.line; lineNumber >= 0; lineNumber--) {
+		let line = document.lineAt(lineNumber).text
 
-	if (isLineStartTagButNotEnd(startLine)) {
-		return startLine
-	}
-	
-	if (/^\s*$/.test(startLine) && position.line > 0) {
-		let previousLine = document.lineAt(position.line - 1).text
-		if (isLineStartTagButNotEnd(previousLine)) {
-			return previousLine
+		if (isLineStartTagButNotEnd(line)) {
+			return line
+		}
+
+		// A completed tag separates this line break from earlier opening tags.
+		if (line.includes('>')) {
+			break
 		}
 	}
-	
+
 	return null
 }

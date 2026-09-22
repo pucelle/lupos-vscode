@@ -84,6 +84,21 @@ describe('autoCompletion', () => {
 		expect(document.text).toBe('const view = html`\n\t<Component\n\t\tvalue`')
 	})
 
+	it('aligns a self-closing delimiter with a multi-line opening tag', async () => {
+		let before = 'const view = html`\n\t<BaseItem\n\t\t.id=${baseItem.id}\n\t\t.size=${49} />`'
+		let start = before.indexOf('/>')
+		let insertedText = '\n\t\t\t'
+		let document = new MockTextDocument(before.slice(0, start) + insertedText + before.slice(start))
+		let editor = new MockTextEditor(document)
+		window.activeTextEditor = editor
+
+		autoCompletion({document, contentChanges: [{rangeOffset: start, text: insertedText}]} as never)
+		await flushAsyncEdits()
+
+		expect(document.text).toBe('const view = html`\n\t<BaseItem\n\t\t.id=${baseItem.id}\n\t\t.size=${49} \n\t/>`')
+		expect(editor.selection.active).toEqual(new Position(4, 1))
+	})
+
 	it('restores tabs eaten when completing a closing HTML tag', async () => {
 		let document = new MockTextDocument('const view = html`\n\t\t<a>\n</a>\n`')
 		let editor = new MockTextEditor(document)
