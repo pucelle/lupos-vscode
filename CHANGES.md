@@ -1,6 +1,10 @@
 # Changes
 
 
+# 1.3.4
+
+- `<div>|${...}`, after enter, $ will have an additional tab before.
+
 # 1.3.3
 
 - Input enter at `<...|/>`, will align `/>` with start `<`.

@@ -84,6 +84,21 @@ describe('autoCompletion', () => {
 		expect(document.text).toBe('const view = html`\n\t<Component\n\t\tvalue`')
 	})
 
+	it('indents a template interpolation inside an opening tag', async () => {
+		let before = 'const view = html`<div>${value}`'
+		let start = before.indexOf('${')
+		let insertedText = '\n'
+		let document = new MockTextDocument(before.slice(0, start) + insertedText + before.slice(start))
+		let editor = new MockTextEditor(document)
+		window.activeTextEditor = editor
+
+		autoCompletion({document, contentChanges: [{rangeOffset: start, text: insertedText}]} as never)
+		await flushAsyncEdits()
+
+		expect(document.text).toBe('const view = html`<div>\n\t${value}`')
+		expect(editor.selection.active).toEqual(new Position(1, 1))
+	})
+
 	it('aligns a self-closing delimiter with a multi-line opening tag', async () => {
 		let before = 'const view = html`\n\t<BaseItem\n\t\t.id=${baseItem.id}\n\t\t.size=${49} />`'
 		let start = before.indexOf('/>')

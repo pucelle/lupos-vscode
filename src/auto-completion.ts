@@ -238,6 +238,36 @@ async function autoInsertTemplateSlot(start: number, insertedText: string) {
 			}
 		}
 
+		// `<div>|${...}`, after enter, $ will have an additional tab before.
+		else if (charAfter === '$') {
+			let newLineNumber = document.positionAt(end).line
+
+			let previousLine = newLineNumber > 0
+				? document.lineAt(newLineNumber - 1).text
+				: ''
+
+			let newLine = document.lineAt(newLineNumber).text
+			let newLineIndentCount = getIndentCount(newLine)
+			let openingTag = previousLine.match(/(?:^|`|\s)(<[A-Za-z][\w:-]*(?:\s+[^<>]*)?>)\s*$/)?.[1]
+
+			if (openingTag && !openingTag.endsWith('/>')) {
+				let tagIndentCount = getIndentCount(previousLine)
+				let expectedIndentCount = tagIndentCount + 1
+
+				if (newLineIndentCount < expectedIndentCount) {
+					let insertTab = '\t'.repeat(expectedIndentCount - newLineIndentCount)
+					let insertTabPosition = document.positionAt(end)
+
+					await editor.edit(editBuilder => {
+						editBuilder.insert(insertTabPosition, insertTab)
+					})
+
+					let cursorPosition = insertTabPosition.translate(0, insertTab.length)
+					editor.selection = new vscode.Selection(cursorPosition, cursorPosition)
+				}
+			}
+		}
+
 		// Input `\n` before `/>` or `>`, eat a tab.
 		else if (charAfter === '>' || charsAfter === '/>') {
 			let endLine = document.lineAt(document.positionAt(end)).text
