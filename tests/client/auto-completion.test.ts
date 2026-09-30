@@ -99,6 +99,29 @@ describe('autoCompletion', () => {
 		expect(editor.selection.active).toEqual(new Position(1, 1))
 	})
 
+	it.each([
+		{label: 'LF', lineBreak: '\n', insertedIndent: '\t'},
+		{label: 'CRLF', lineBreak: '\r\n', insertedIndent: '\t'},
+		{label: 'already indented CRLF', lineBreak: '\r\n', insertedIndent: '\t\t'},
+	])('indents span content after Enter with $label', async ({lineBreak, insertedIndent}) => {
+		let before = 'const view = html`' + lineBreak + '\t<span>${123}</span>`'
+		let start = before.indexOf('${')
+		let insertedText = lineBreak + insertedIndent
+		let document = new MockTextDocument(before.slice(0, start) + insertedText + before.slice(start))
+		let editor = new MockTextEditor(document)
+		let cursorPosition = document.positionAt(start + insertedText.length)
+		editor.selection = new Selection(cursorPosition, cursorPosition)
+		window.activeTextEditor = editor
+
+		autoCompletion({document, contentChanges: [{rangeOffset: start, text: insertedText}]} as never)
+		await flushAsyncEdits()
+
+		let expected = 'const view = html`' + lineBreak + '\t<span>' + lineBreak + '\t\t${123}</span>`'
+
+		expect(document.text).toBe(expected)
+		expect(editor.selection.active).toEqual(new Position(2, 2))
+	})
+
 	it('aligns a self-closing delimiter with a multi-line opening tag', async () => {
 		let before = 'const view = html`\n\t<BaseItem\n\t\t.id=${baseItem.id}\n\t\t.size=${49} />`'
 		let start = before.indexOf('/>')

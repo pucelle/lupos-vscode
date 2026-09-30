@@ -199,7 +199,9 @@ async function autoInsertTemplateSlot(start: number, insertedText: string) {
 		}
 	}
 
-	if (insertedText.startsWith('\n')) {
+	let lineBreak = insertedText.match(/^\r?\n/)?.[0]
+
+	if (lineBreak) {
 			
 		// Insert char end offset, also start of old chars.
 		let end = start + insertedText.length
@@ -207,7 +209,7 @@ async function autoInsertTemplateSlot(start: number, insertedText: string) {
 		let tagStartLine = getPreviousTagStartLine(position, document)
 		let charAfter = document.getText().slice(end, end + 1)
 		let charsAfter = document.getText().slice(end, end + 2)
-		let insertIndentCount = getIndentCount(insertedText.slice(1))
+		let insertIndentCount = getIndentCount(insertedText.slice(lineBreak.length))
 
 		// Input `\n` inside a `<...>`, add a tab to the new line.
 		if (tagStartLine) {

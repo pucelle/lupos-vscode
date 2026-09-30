@@ -31,7 +31,6 @@ If wanting to debug server part, please follow comments in `packages/lupos-serve
 
 ## Not provided, but plan to
 
-- `>${...}<` slot content completion. Now can only complete for object properties.
 - Validate circular references. I believe this should be superior difficult.
 - Decorates a variable or property to describe whether it gets observed.
 
