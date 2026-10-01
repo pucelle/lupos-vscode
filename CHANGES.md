@@ -1,9 +1,12 @@
 # Changes
 
+# 1.3.5
+
+- For ``html`|<Article />` ``, when enter, `<` will have an additional tab before.
 
 # 1.3.4
 
-- `<div>|${...}`, after enter, $ will have an additional tab before.
+- `<div>|${...}`, after enter, `$` will have an additional tab before.
 
 
 # 1.3.3

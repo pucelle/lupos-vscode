@@ -211,8 +211,14 @@ async function autoInsertTemplateSlot(start: number, insertedText: string) {
 		let charsAfter = document.getText().slice(end, end + 2)
 		let insertIndentCount = getIndentCount(insertedText.slice(lineBreak.length))
 
+		// Opening tags on a new line are one level deeper than the preceding line.
+		if (/^<[A-Za-z]/.test(document.getText().slice(end, end + 2))) {
+			let previousLine = document.lineAt(position).text
+			await indentNewLine(editor, end, getIndentCount(previousLine) + 1)
+		}
+
 		// Input `\n` inside a `<...>`, add a tab to the new line.
-		if (tagStartLine) {
+		else if (tagStartLine) {
 			let tagIndentCount = getIndentCount(tagStartLine)
 
 			if (charsAfter === '/>' && insertIndentCount > tagIndentCount) {
@@ -248,25 +254,10 @@ async function autoInsertTemplateSlot(start: number, insertedText: string) {
 				? document.lineAt(newLineNumber - 1).text
 				: ''
 
-			let newLine = document.lineAt(newLineNumber).text
-			let newLineIndentCount = getIndentCount(newLine)
 			let openingTag = previousLine.match(/(?:^|`|\s)(<[A-Za-z][\w:-]*(?:\s+[^<>]*)?>)\s*$/)?.[1]
 
 			if (openingTag && !openingTag.endsWith('/>')) {
-				let tagIndentCount = getIndentCount(previousLine)
-				let expectedIndentCount = tagIndentCount + 1
-
-				if (newLineIndentCount < expectedIndentCount) {
-					let insertTab = '\t'.repeat(expectedIndentCount - newLineIndentCount)
-					let insertTabPosition = document.positionAt(end)
-
-					await editor.edit(editBuilder => {
-						editBuilder.insert(insertTabPosition, insertTab)
-					})
-
-					let cursorPosition = insertTabPosition.translate(0, insertTab.length)
-					editor.selection = new vscode.Selection(cursorPosition, cursorPosition)
-				}
+				await indentNewLine(editor, end, getIndentCount(previousLine) + 1)
 			}
 		}
 
@@ -322,4 +313,23 @@ function getPreviousTagStartLine(position: vscode.Position, document: vscode.Tex
 	}
 
 	return null
+}
+
+
+/** Insert missing tabs on a new line and keep the cursor before its content. */
+async function indentNewLine(editor: vscode.TextEditor, end: number, expectedIndentCount: number) {
+	let insertPosition = editor.document.positionAt(end)
+	let line = editor.document.lineAt(insertPosition).text
+	let indentCount = getIndentCount(line)
+
+	if (indentCount < expectedIndentCount) {
+		let insertTab = '\t'.repeat(expectedIndentCount - indentCount)
+
+		await editor.edit(editBuilder => {
+			editBuilder.insert(insertPosition, insertTab)
+		})
+
+		let cursorPosition = insertPosition.translate(0, insertTab.length)
+		editor.selection = new vscode.Selection(cursorPosition, cursorPosition)
+	}
 }

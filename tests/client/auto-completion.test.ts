@@ -84,6 +84,29 @@ describe('autoCompletion', () => {
 		expect(document.text).toBe('const view = html`\n\t<Component\n\t\tvalue`')
 	})
 
+	it.each([
+		{label: 'LF', lineBreak: '\n', insertedIndent: '\t'},
+		{label: 'CRLF', lineBreak: '\r\n', insertedIndent: '\t'},
+		{label: 'already indented CRLF', lineBreak: '\r\n', insertedIndent: '\t\t'},
+	])('indents an opening component tag after Enter with $label', async ({lineBreak, insertedIndent}) => {
+		let before = '\tconst view = html`<Article .name=${params.name} />`'
+		let start = before.indexOf('<Article')
+		let insertedText = lineBreak + insertedIndent
+		let document = new MockTextDocument(before.slice(0, start) + insertedText + before.slice(start))
+		let editor = new MockTextEditor(document)
+		let cursorPosition = document.positionAt(start + insertedText.length)
+		editor.selection = new Selection(cursorPosition, cursorPosition)
+		window.activeTextEditor = editor
+
+		autoCompletion({document, contentChanges: [{rangeOffset: start, text: insertedText}]} as never)
+		await flushAsyncEdits()
+
+		let expected = '\tconst view = html`' + lineBreak + '\t\t<Article .name=${params.name} />`'
+
+		expect(document.text).toBe(expected)
+		expect(editor.selection.active).toEqual(new Position(1, 2))
+	})
+
 	it('indents a template interpolation inside an opening tag', async () => {
 		let before = 'const view = html`<div>${value}`'
 		let start = before.indexOf('${')
