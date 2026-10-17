@@ -7,7 +7,7 @@ import {TemplateLanguageService} from './types'
 import {Template} from './template'
 import {TemplateEmbeddedRegion} from './embedded-region'
 import {SharedCSSService, SharedHTMLService} from '../shared-services'
-import {DiagnosticModifier, TemplatePartType} from '../lupos-ts-module'
+import {DiagnosticModifier, getTemplatePartPieceAt, TemplatePartPieceType, TemplatePartType, TemplateSlotPlaceholder} from '../lupos-ts-module'
 
 
 /**
@@ -52,7 +52,34 @@ export class TemplateServiceRouter implements TemplateLanguageService {
 			}
 		}
 
-		return tsCompletions
+		return this.filterAssignedProperties(tsCompletions, template, temOffset)
+	}
+
+	/** Exclude other assignments on this tag after combining component and HTML suggestions. */
+	private filterAssignedProperties(info: TS.CompletionInfo, template: Template, temOffset: number): TS.CompletionInfo {
+		let part = template.getPartAt(temOffset)
+
+		if (!part || part.type !== TemplatePartType.Property
+			|| getTemplatePartPieceAt(part, temOffset)?.type !== TemplatePartPieceType.Name
+			|| !TemplateSlotPlaceholder.isComponent(part.node.tagName!)
+		) {
+			return info
+		}
+
+		let existingNames = new Set<string>()
+
+		for (let existingPart of template.parts) {
+			if (existingPart !== part
+				&& existingPart.node === part.node
+				&& existingPart.type === TemplatePartType.Property
+				&& existingPart.mainName
+			) {
+				existingNames.add(existingPart.mainName)
+			}
+		}
+
+		info.entries = info.entries.filter(entry => !existingNames.has(entry.name))
+		return info
 	}
 
 	getCompletionEntryDetails(template: Template, temOffset: number, _gloOffset: number, name: string): TS.CompletionEntryDetails | undefined {

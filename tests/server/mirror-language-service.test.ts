@@ -136,6 +136,51 @@ describe('server mirror language service', {timeout: 15_000}, () => {
 		expect(diagnostic?.start).toBeLessThan(source.indexOf(' />'))
 	})
 
+	it.each([
+		{importText: 'import type {List}', markup: '<List />'},
+		{importText: 'import {type List}', markup: '<List></List>'},
+	])('reports type-only component imports for $importText', ({importText, markup}) => {
+		let source = `import {html} from 'lupos.html'
+			${importText} from 'example'
+			const view = html\`${markup}\``
+		let dependency = `declare module 'example' {
+			import {Component} from 'lupos.html'
+			export class List extends Component {}
+		}`
+		let {service, fileName} = createTestLanguageService(source, {
+			'C:/project/example.d.ts': dependency,
+		})
+		let diagnostics = service.getSemanticDiagnostics(fileName)
+		let errors = diagnostics.filter(diagnostic => diagnostic.code === 1361)
+
+		expect(errors).toHaveLength(1)
+		expect(errors[0]).toMatchObject({
+			category: ts.DiagnosticCategory.Error,
+			start: source.indexOf('<List') + 1,
+			length: 4,
+		})
+		expect(errors[0].file?.fileName).toBe(fileName)
+		expect(ts.flattenDiagnosticMessageText(errors[0].messageText, '\n'))
+			.toContain("'List' cannot be used as a value")
+	})
+
+	it('allows value component imports without reporting generated constructor errors', () => {
+		let source = `import {html} from 'lupos.html'
+			import {List} from 'example'
+			const view = html\`<List></List>\``
+		let dependency = `declare module 'example' {
+			import {Component} from 'lupos.html'
+			export abstract class List extends Component {
+				constructor(required: number)
+			}
+		}`
+		let {service, fileName} = createTestLanguageService(source, {
+			'C:/project/example.d.ts': dependency,
+		})
+
+		expect(diagnosticMessages(service.getSemanticDiagnostics(fileName))).toEqual([])
+	})
+
 	it('reports binding update argument diagnostics', () => {
 		let source = `import {html, Binding} from 'lupos.html'
 			class Show implements Binding { update(visible: boolean) {} }

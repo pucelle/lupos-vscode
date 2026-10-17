@@ -43,6 +43,43 @@ describe('server language features', () => {
 		expect(completions?.entries.some(entry => entry.name === 'Card')).toBe(true)
 	})
 
+	it.each([
+		{markup: '<Card .title=${"used"} .| />', excluded: 'title'},
+		{markup: '<Card .| .title=${"used"} />', excluded: 'title'},
+		{markup: '<Card ..title=${"used"} .| />', excluded: 'title'},
+		{markup: '<Card .title=${"used"} ..| />', excluded: 'title'},
+		{markup: '<Card .inherited=${"used"} .| />', excluded: 'inherited'},
+	])('omits assigned component properties in $markup', ({markup, excluded}) => {
+		let source = `import {html, Component} from 'lupos.html'
+			class Base extends Component { inherited = '' }
+			class Card extends Base { title = ''; size = 0 }
+			const view = html\`${markup}\``
+		let position = source.indexOf('|')
+		let {service, fileName} = createTestLanguageService(source.replace('|', ''))
+		let names = service.getCompletionsAtPosition(fileName, position, {})
+			?.entries.map(entry => entry.name)
+
+		expect(names).toContain('size')
+		expect(names).not.toContain(excluded)
+	})
+
+	it.each([
+		{markup: '<Card .ti|tle=${"editing"} />', hasTitle: true},
+		{markup: '<Card .title=${"used"} .ti|tle=${"editing"} />', hasTitle: false},
+		{markup: '<Card .title=${"used"} /><Card .| />', hasTitle: true},
+		{markup: '<Card title="attribute" .| />', hasTitle: true},
+	])('keeps property completion scoped to other assignments in $markup', ({markup, hasTitle}) => {
+		let source = `import {html, Component} from 'lupos.html'
+			class Card extends Component { title = '' }
+			const view = html\`${markup}\``
+		let position = source.indexOf('|')
+		let {service, fileName} = createTestLanguageService(source.replace('|', ''))
+		let names = service.getCompletionsAtPosition(fileName, position, {})
+			?.entries.map(entry => entry.name)
+
+		expect(names?.includes('title')).toBe(hasTitle)
+	})
+
 	it('returns quick info and a definition for a component tag', () => {
 		let {service, fileName} = createTestLanguageService(Source)
 		let position = Source.indexOf('<Card>') + 2

@@ -1,5 +1,11 @@
 # Changes
 
+# 1.3.6
+
+- Report an error when a template component is imported using `import type`.
+- Exclude properties already assigned on the same component tag from analyzing property name completions.
+
+
 # 1.3.5
 
 - For ``html`|<Article />` ``, when enter, `<` will have an additional tab before.
