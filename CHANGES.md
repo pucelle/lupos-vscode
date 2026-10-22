@@ -1,5 +1,10 @@
 # Changes
 
+# 1.3.7
+
+- Support `key` property for `<lu:for>`.
+
+
 # 1.3.6
 
 - Report an error when a template component is imported using `import type`.
