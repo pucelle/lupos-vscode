@@ -1,6 +1,6 @@
 import type TS from 'typescript'
 import {DOMBooleanAttributes, DOMElementEvents, DOMStyleProperties, CompletionItem} from '../complete-data'
-import {TemplatePart, TemplatePartPiece, TemplatePartPieceType, isSimulatedEventName, TemplatePartType, TemplateSlotPlaceholder, LuposBindingModifiers, LuposComponentAttributes, LuposDOMEventModifiers, LuposDOMEventCategories, LuposSimulatedEvents, LuposFlowControlTags,} from '../lupos-ts-module'
+import {TemplatePart, TemplatePartPiece, TemplatePartPieceType, isSimulatedEventName, TemplatePartType, TemplateSlotPlaceholder, LUPOS_BINDING_MODIFIERS, LUPOS_COMPONENT_ATTRIBUTES, LUPOS_DOM_EVENT_MODIFIERS, LUPOS_DOM_EVENT_CATEGORIES, LUPOS_SIMULATED_EVENTS, LUPOS_FLOW_CONTROL_TAGS,} from '../lupos-ts-module'
 import {makeQuickInfo} from './helpers/quick-info-converter'
 
 
@@ -12,7 +12,7 @@ export class LuposQuickInfo {
 
 		// <lu:xxx>
 		if (part.type === TemplatePartType.FlowControl) {
-			let info = LuposFlowControlTags.find(item => item.name === part.node.tagName)
+			let info = LUPOS_FLOW_CONTROL_TAGS.find(item => item.name === part.node.tagName)
 			item = info
 		}
 
@@ -38,7 +38,7 @@ export class LuposQuickInfo {
 			&& TemplateSlotPlaceholder.isComponent(part.node.tagName!)
 			&& piece.type === TemplatePartPieceType.Name
 		) {
-			let info = LuposComponentAttributes.find(item => item.name === part.mainName)
+			let info = LUPOS_COMPONENT_ATTRIBUTES.find(item => item.name === part.mainName)
 			item = info
 		}
 
@@ -69,13 +69,13 @@ export class LuposQuickInfo {
 
 			// Complete style unit.
 			else if (modifierIndex === 1) {
-				return findQuickInfoItem(LuposBindingModifiers.style, modifierValue)
+				return findQuickInfoItem(LUPOS_BINDING_MODIFIERS.style, modifierValue)
 			}
 		}
 
 		// Not `:style`
 		else {
-			let modifierItems = LuposBindingModifiers[mainName]
+			let modifierItems = LUPOS_BINDING_MODIFIERS[mainName]
 			if (modifierItems) {
 				return findQuickInfoItem(modifierItems, modifierValue)
 			}
@@ -91,7 +91,7 @@ export class LuposQuickInfo {
 		// `@cli|`, find quick info of event name.
 		if (piece.type === TemplatePartPieceType.Name) {
 			if (isSimulatedEvent) {
-				return findQuickInfoItem(LuposSimulatedEvents, mainName)
+				return findQuickInfoItem(LUPOS_SIMULATED_EVENTS, mainName)
 			}
 			else {
 				return findQuickInfoItem(DOMElementEvents, mainName)
@@ -102,14 +102,14 @@ export class LuposQuickInfo {
 		else if (piece.type === TemplatePartPieceType.Modifier) {
 
 			// `@keydown.Enter`, `@click.left`.
-			if (LuposDOMEventCategories[mainName]) {
-				let category = LuposDOMEventCategories[mainName]
-				return findQuickInfoItem(LuposDOMEventModifiers[category], piece.name)
+			if (LUPOS_DOM_EVENT_CATEGORIES[mainName]) {
+				let category = LUPOS_DOM_EVENT_CATEGORIES[mainName]
+				return findQuickInfoItem(LUPOS_DOM_EVENT_MODIFIERS[category], piece.name)
 			}
 
 			// `@click.prevent`.
 			else {
-				return findQuickInfoItem(LuposDOMEventModifiers.global, piece.name)
+				return findQuickInfoItem(LUPOS_DOM_EVENT_MODIFIERS.global, piece.name)
 			}
 		}
 

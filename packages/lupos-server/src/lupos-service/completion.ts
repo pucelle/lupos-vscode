@@ -1,10 +1,22 @@
 import type TS from 'typescript'
-import {TemplatePart, TemplatePartType, TemplateSlotPlaceholder, TemplatePartPiece, TemplatePartPieceType, LuposFlowControlTags, LuposBindingModifiers, LuposSimulatedEvents, LuposDOMEventModifiers, LuposDOMEventCategories, LuposComponentAttributes, getBindingModifierCompletionItems, findCompletionDataItem, filterCompletionDataItems} from '../lupos-ts-module'
+import {TemplatePart, TemplatePartType, TemplateSlotPlaceholder, TemplatePartPiece, TemplatePartPieceType, LUPOS_FLOW_CONTROL_TAGS, LUPOS_BINDING_MODIFIERS, LUPOS_SIMULATED_EVENTS, LUPOS_DOM_EVENT_MODIFIERS, LUPOS_DOM_EVENT_CATEGORIES, LUPOS_COMPONENT_ATTRIBUTES, getBindingModifierCompletionItems, findCompletionDataItem, filterCompletionDataItems} from '../lupos-ts-module'
 import {ProjectContext, ts} from '../core'
 import {WorkSpaceAnalyzer} from './analyzer'
 import {DOMStyleProperties, DOMElementEvents, filterBooleanAttributeCompletionItems, filterDOMElementCompletionItems, CompletionItem, assignCompletionItems} from '../complete-data'
 import {Template} from '../template-service'
 import {makeCompletionEntryDetails, makeCompletionInfo} from './helpers/completion-converter'
+
+
+/** Required control-tag expressions and their snippet tab stops. */
+const CONTROL_TAG_PARAMETERS: Readonly<Record<string, string>> = {
+	'lu:await': ' \\${${1}}',
+	'lu:for': ' \\${${1:item, index}} of \\${${2:list}}',
+	'lu:if': ' \\${${1}}',
+	'lu:elseif': ' \\${${1}}',
+	'lu:keyed': ' \\${${1}}',
+	'lu:switch': ' \\${${1}}',
+	'lu:case': ' \\${${1}}',
+}
 
 
 /** Provide lupos completion service. */
@@ -41,7 +53,47 @@ export class LuposCompletion {
 			}
 		}
 
-		return makeCompletionInfo(items, part, piece)
+		let info = makeCompletionInfo(items, part, piece)
+
+		if (piece.type === TemplatePartPieceType.TagName) {
+			this.addControlTagSnippets(info, part, piece, template)
+		}
+
+		return info
+	}
+
+	/** Expand new control tags into editable parameters and an indented body. */
+	private addControlTagSnippets(
+		info: TS.CompletionInfo,
+		part: TemplatePart,
+		piece: TemplatePartPiece,
+		template: Template
+	) {
+		let node = part.node
+
+		if (node.closureEnd >= 0 || node.children.length > 0 || node.attrs?.length) {
+			return
+		}
+
+		let lineBreak = template.sourceFile.text.match(/\r?\n/)?.[0] ?? '\n'
+		let existingEnd = template.content.slice(piece.end).match(/^[ \t]*>/)?.[0] ?? ''
+
+		for (let entry of info.entries) {
+			if (!LUPOS_FLOW_CONTROL_TAGS.some(tag => tag.name === entry.name)) {
+				continue
+			}
+
+			let parameters = CONTROL_TAG_PARAMETERS[entry.name] ?? ''
+
+			entry.insertText = entry.name + parameters + '>'
+				+ lineBreak + '\t$0' + lineBreak + '</' + entry.name + '>'
+
+			entry.isSnippet = true
+
+			if (entry.replacementSpan) {
+				entry.replacementSpan.length += existingEnd.length
+			}
+		}
 	}
 
 	getCompletionEntryDetails(part: TemplatePart, piece: TemplatePartPiece, template: Template, name: string): TS.CompletionEntryDetails | undefined {
@@ -84,7 +136,7 @@ export class LuposCompletion {
 			if (part.type === TemplatePartType.FlowControl
 				|| part.type === TemplatePartType.EmptyStartTag
 			) {
-				let flowControlItems = filterCompletionDataItems(LuposFlowControlTags, part.node.tagName || '')
+				let flowControlItems = filterCompletionDataItems(LUPOS_FLOW_CONTROL_TAGS, part.node.tagName || '')
 				items.push(...flowControlItems)
 			}
 		}
@@ -115,7 +167,7 @@ export class LuposCompletion {
 			&& TemplateSlotPlaceholder.isComponent(part.node.tagName!)
 		) {
 			if (piece.type === TemplatePartPieceType.Name) {
-				items = filterCompletionDataItems(LuposComponentAttributes, part.mainName!)
+				items = filterCompletionDataItems(LUPOS_COMPONENT_ATTRIBUTES, part.mainName!)
 			}
 			else if (piece.type === TemplatePartPieceType.AttrValue && part.mainName === 'tagName') {
 				items = filterDOMElementCompletionItems(part.attr!.value!)
@@ -165,7 +217,7 @@ export class LuposCompletion {
 
 			// Complete style unit.
 			else if (modifierIndex === 1) {
-				let filtered = filterCompletionDataItems(LuposBindingModifiers.style, modifierValue)
+				let filtered = filterCompletionDataItems(LUPOS_BINDING_MODIFIERS.style, modifierValue)
 				items.push(...filtered)
 			}
 		}
@@ -191,7 +243,7 @@ export class LuposCompletion {
 
 			// Use known binding modifiers.
 			if (!availableModifiers || availableModifiers.length === 0) {
-				availableModifiers = LuposBindingModifiers[mainName]?.map(item => item.name)
+				availableModifiers = LUPOS_BINDING_MODIFIERS[mainName]?.map(item => item.name)
 			}
 
 			// Make normal modifier items.
@@ -268,7 +320,7 @@ export class LuposCompletion {
 			let comEvents = component ? this.analyzer.getComponentEventsForCompletion(component!, mainName) : []
 			let comItems = assignCompletionItems(comEvents, {order: -1})
 
-			let simEvents = part.namePrefix === '@' ? filterCompletionDataItems(LuposSimulatedEvents, mainName) : []
+			let simEvents = part.namePrefix === '@' ? filterCompletionDataItems(LUPOS_SIMULATED_EVENTS, mainName) : []
 			let simItems = assignCompletionItems(simEvents, {order: 1, kind: ts.ScriptElementKind.enumMemberElement})
 
 			let eventItems = [...comItems, ...domItems, ...simItems]
@@ -282,15 +334,15 @@ export class LuposCompletion {
 			let modifierValue = modifiers[modifierIndex]
 
 			// `.passive`, `.stop`, ...
-			let globalItems = filterCompletionDataItems(LuposDOMEventModifiers.global, modifierValue)
+			let globalItems = filterCompletionDataItems(LUPOS_DOM_EVENT_MODIFIERS.global, modifierValue)
 			globalItems = globalItems.filter(item => !modifiers.includes(item.name))
 			items.push(...globalItems)
 
 			// `@keydown.enter`, `@click.left`.
 			// Not provide control keys completion.
-			if (LuposDOMEventCategories[mainName]) {
-				let category = LuposDOMEventCategories[mainName]
-				let categoryItems = filterCompletionDataItems(LuposDOMEventModifiers[category], modifierValue)
+			if (LUPOS_DOM_EVENT_CATEGORIES[mainName]) {
+				let category = LUPOS_DOM_EVENT_CATEGORIES[mainName]
+				let categoryItems = filterCompletionDataItems(LUPOS_DOM_EVENT_MODIFIERS[category], modifierValue)
 				items.push(...categoryItems)
 			}
 		}

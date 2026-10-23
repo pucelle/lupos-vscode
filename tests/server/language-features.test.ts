@@ -44,6 +44,58 @@ describe('server language features', () => {
 	})
 
 	it.each([
+		{name: 'lu:if', parameters: ' \\${${1}}'},
+		{name: 'lu:elseif', parameters: ' \\${${1}}'},
+		{name: 'lu:await', parameters: ' \\${${1}}'},
+		{name: 'lu:keyed', parameters: ' \\${${1}}'},
+		{name: 'lu:switch', parameters: ' \\${${1}}'},
+		{name: 'lu:case', parameters: ' \\${${1}}'},
+		{name: 'lu:for', parameters: ' \\${${1:item, index}} of \\${${2:list}}'},
+		{name: 'lu:else', parameters: ''},
+		{name: 'lu:default', parameters: ''},
+		{name: 'lu:cache', parameters: ''},
+		{name: 'lu:portal', parameters: ''},
+	])('completes $name with inputs, an indented body, and a closing tag', ({name, parameters}) => {
+		let source = "import {html} from 'lupos.html'\nconst view = html`<lu:>`"
+		let position = source.indexOf('<lu:') + 4
+		let {service, fileName} = createTestLanguageService(source)
+		let completion = service.getCompletionsAtPosition(fileName, position, {})
+		let entry = completion?.entries.find(entry => entry.name === name)
+
+		expect(entry?.isSnippet).toBe(true)
+		expect(entry?.insertText).toBe(name + parameters + '>\n\t$0\n</' + name + '>')
+		expect(entry?.replacementSpan).toEqual({start: source.indexOf('<lu:') + 1, length: 4})
+	})
+
+	it('completes a bare opening angle bracket with a CRLF control snippet', () => {
+		let source = "import {html} from 'lupos.html'\r\nconst view = html`\r\n\t<`"
+		let position = source.lastIndexOf('<') + 1
+		let {service, fileName} = createTestLanguageService(source)
+		let completion = service.getCompletionsAtPosition(fileName, position, {})
+		let entry = completion?.entries.find(entry => entry.name === 'lu:if')
+
+		expect(entry?.isSnippet).toBe(true)
+		expect(entry?.insertText).toBe('lu:if \\${${1}}>\r\n\t$0\r\n</lu:if>')
+		expect(entry?.replacementSpan).toEqual({start: position, length: 0})
+	})
+
+	it.each([
+		'<lu:i|f ${condition}>content</lu:if>',
+		'<lu:i|f ${condition}>',
+		'<lu:i|f></lu:if>',
+		'<lu:i|f />',
+	])('preserves existing control tag contents when completing %s', markup => {
+		let source = `import {html} from 'lupos.html'\nconst condition = true\nconst view = html\`${markup}\``
+		let position = source.indexOf('|')
+		let {service, fileName} = createTestLanguageService(source.replace('|', ''))
+		let completion = service.getCompletionsAtPosition(fileName, position, {})
+		let entry = completion?.entries.find(entry => entry.name === 'lu:if')
+
+		expect(entry?.insertText).toBe('lu:if')
+		expect(entry?.isSnippet).toBeUndefined()
+	})
+
+	it.each([
 		{markup: '<Card .title=${"used"} .| />', excluded: 'title'},
 		{markup: '<Card .| .title=${"used"} />', excluded: 'title'},
 		{markup: '<Card ..title=${"used"} .| />', excluded: 'title'},

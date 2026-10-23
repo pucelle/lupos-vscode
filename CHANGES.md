@@ -1,5 +1,11 @@
 # Changes
 
+
+# 1.3.8
+
+- Support control tags snippets.
+
+
 # 1.3.7
 
 - Support `key` property for `<lu:for>`.
