@@ -1,6 +1,11 @@
 # Changes
 
 
+# 1.3.9
+
+- Adjust auto indent when previous line not starts with tag.
+
+
 # 1.3.8
 
 - Support control tags snippets.

@@ -211,10 +211,10 @@ async function autoInsertTemplateSlot(start: number, insertedText: string) {
 		let charsAfter = document.getText().slice(end, end + 2)
 		let insertIndentCount = getIndentCount(insertedText.slice(lineBreak.length))
 
-		// Opening tags on a new line are one level deeper than the preceding line.
+		// Opening tags align with preceding content, or nest inside an opening tag.
 		if (/^<[A-Za-z]/.test(document.getText().slice(end, end + 2))) {
 			let previousLine = document.lineAt(position).text
-			await indentNewLine(editor, end, getIndentCount(previousLine) + 1)
+			await indentNewLine(editor, end, getContentIndentCount(previousLine))
 		}
 
 		// Input `\n` inside a `<...>`, add a tab to the new line.
@@ -254,11 +254,7 @@ async function autoInsertTemplateSlot(start: number, insertedText: string) {
 				? document.lineAt(newLineNumber - 1).text
 				: ''
 
-			let openingTag = previousLine.match(/(?:^|`|\s)(<[A-Za-z][\w:-]*(?:\s+[^<>]*)?>)\s*$/)?.[1]
-
-			if (openingTag && !openingTag.endsWith('/>')) {
-				await indentNewLine(editor, end, getIndentCount(previousLine) + 1)
-			}
+			await indentNewLine(editor, end, getContentIndentCount(previousLine))
 		}
 
 		// Input `\n` before `/>` or `>`, eat a tab.
@@ -313,6 +309,16 @@ function getPreviousTagStartLine(position: vscode.Position, document: vscode.Tex
 	}
 
 	return null
+}
+
+
+/** Indent child content after a template quote or opening tag; otherwise align siblings. */
+function getContentIndentCount(previousLine: string): number {
+	let openingTag = previousLine.match(/(?:^|`|\s)(<[A-Za-z][\w:-]*(?:\s+[^<>]*)?>)\s*$/)?.[1]
+	let startsContent = previousLine.trimEnd().endsWith('`')
+		|| !!openingTag && !openingTag.endsWith('/>')
+
+	return getIndentCount(previousLine) + (startsContent ? 1 : 0)
 }
 
 

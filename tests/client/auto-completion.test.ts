@@ -123,6 +123,30 @@ describe('autoCompletion', () => {
 	})
 
 	it.each([
+		{prefix: '\t123', lineBreak: '\n', expectedIndent: '\t'},
+		{prefix: '\t123', lineBreak: '\r\n', expectedIndent: '\t'},
+		{prefix: '\t<div>', lineBreak: '\n', expectedIndent: '\t\t'},
+		{prefix: '\t</div>', lineBreak: '\n', expectedIndent: '\t'},
+	])('indents a moved span according to the preceding content $prefix', async ({prefix, lineBreak, expectedIndent}) => {
+		let before = 'const view = html`<div>' + lineBreak + prefix + '<span>`'
+		let start = before.indexOf('<span>')
+		let insertedText = lineBreak + '\t'
+		let document = new MockTextDocument(before.slice(0, start) + insertedText + before.slice(start))
+		let editor = new MockTextEditor(document)
+		let cursorPosition = document.positionAt(start + insertedText.length)
+		editor.selection = new Selection(cursorPosition, cursorPosition)
+		window.activeTextEditor = editor
+
+		autoCompletion({document, contentChanges: [{rangeOffset: start, text: insertedText}]} as never)
+		await flushAsyncEdits()
+
+		let expected = before.slice(0, start) + lineBreak + expectedIndent + before.slice(start)
+
+		expect(document.text).toBe(expected)
+		expect(editor.selection.active).toEqual(new Position(2, expectedIndent.length))
+	})
+
+	it.each([
 		{label: 'LF', lineBreak: '\n', insertedIndent: '\t'},
 		{label: 'CRLF', lineBreak: '\r\n', insertedIndent: '\t'},
 		{label: 'already indented CRLF', lineBreak: '\r\n', insertedIndent: '\t\t'},
