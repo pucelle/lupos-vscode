@@ -217,6 +217,34 @@ describe('server mirror language service', {timeout: 15_000}, () => {
 		expect(completion?.entries.map(entry => entry.name)).toContain('label')
 	})
 
+	it.each(['', 'U', 'Un', 'Unknown'])('completes enum members at a long condition boundary after %s', prefix => {
+		let source = `import {html} from 'lupos.html'
+			enum QuestSideEnum { Unknown, Alliance, Horde, Both }
+			const quest = {} as {side?: QuestSideEnum}
+			const view = html\`<lu:if \${quest.side !== undefined && quest.side !== QuestSideEnum.${prefix}}>
+				\${quest.side}
+			</lu:if>\``
+		let {service, fileName} = createTestLanguageService(source)
+		let position = source.indexOf('QuestSideEnum.' + prefix + '}') + 'QuestSideEnum.'.length + prefix.length
+		let completion = service.getCompletionsAtPosition(fileName, position, {})
+		let entry = completion?.entries.find(entry => entry.name === 'Unknown')
+
+		expect(entry).toBeDefined()
+		expect(completion?.entries.map(entry => entry.name)).not.toContain('class')
+
+		let details = entry && service.getCompletionEntryDetails(
+			fileName,
+			position,
+			entry.name,
+			{},
+			entry.source,
+			{},
+			entry.data
+		)
+
+		expect(details?.displayParts?.map(part => part.text).join('')).toContain('QuestSideEnum.Unknown')
+	})
+
 	it('returns details for mirror contextual completions', () => {
 		let source = `import {html, Component} from 'lupos.html'
 			class Card extends Component { options!: {label: string, value: number} }

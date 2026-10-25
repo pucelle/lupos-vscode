@@ -96,7 +96,7 @@ export class TSLanguageServiceProxy {
 
 			// Replace with lupos template completion.
 			let temOffset = template.globalOffsetToLocal(gloOffset)
-			let withinValueRange = template.isWithinValueRange(temOffset)
+			let withinValueRange = template.isWithinValueRange(gloOffset)
 			let info = this.templateService.getCompletionsAtPosition!(template, temOffset, gloOffset, options)
 			
 			let mirrorInfo = withinValueRange
@@ -179,7 +179,7 @@ export class TSLanguageServiceProxy {
 
 			// Replace with lupos template completion.
 			let temOffset = template.globalOffsetToLocal(gloOffset)
-			let withinValueRange = template.isWithinValueRange(temOffset)
+			let withinValueRange = template.isWithinValueRange(gloOffset)
 
 			if (withinValueRange) {
 				let mirrorEntry = this.mirrorService.getCompletionEntryDetails(
@@ -225,7 +225,7 @@ export class TSLanguageServiceProxy {
 			
 			// Replace with lupos template completion.
 			let temOffset = template.globalOffsetToLocal(gloOffset)
-			let withinValueRange = template.isWithinValueRange(temOffset)
+			let withinValueRange = template.isWithinValueRange(gloOffset)
 			let info = this.templateService.getQuickInfoAtPosition!(template, temOffset, gloOffset)
 
 			if (info) {
@@ -454,7 +454,7 @@ export class TSLanguageServiceProxy {
 			}
 
 			let temOffset = template.globalOffsetToLocal(gloOffset)
-			let withinValueRange = template.isWithinValueRange(temOffset)
+			let withinValueRange = template.isWithinValueRange(gloOffset)
 			let items = this.templateService.getSignatureHelpItemsAtPosition!(template, temOffset, gloOffset, options)
 
 			if (items) {
@@ -505,7 +505,7 @@ export class TSLanguageServiceProxy {
 			}
 
 			let temOffset = template.globalOffsetToLocal(gloOffset)
-			let withinValueRange = template.isWithinValueRange(temOffset)
+			let withinValueRange = template.isWithinValueRange(gloOffset)
 
 			// Resolves generic HTML/CSS document highlighting.
 			let symbols = this.templateService.getReferencesAtPosition?.(template, temOffset, gloOffset)
@@ -593,7 +593,7 @@ export class TSLanguageServiceProxy {
 			}
 
 			let temOffset = template.globalOffsetToLocal(gloOffset)
-			let withinValueRange = template.isWithinValueRange(temOffset)
+			let withinValueRange = template.isWithinValueRange(gloOffset)
 			let info = this.templateService.getJsxClosingTagAtPosition!(template, temOffset, gloOffset)
 
 			if (withinValueRange && !info) {

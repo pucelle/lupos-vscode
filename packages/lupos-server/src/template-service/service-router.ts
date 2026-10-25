@@ -29,7 +29,7 @@ export class TemplateServiceRouter implements TemplateLanguageService {
 		Logger.log('Lupos Plugin Started')
 	}
 
-	getCompletionsAtPosition(template: Template, temOffset: number, _gloOffset: number): TS.CompletionInfo | undefined {
+	getCompletionsAtPosition(template: Template, temOffset: number, gloOffset: number): TS.CompletionInfo | undefined {
 		let region = template.embedded.getRegionAt(temOffset)
 		let tsCompletions: TS.CompletionInfo = VS2TSTranslator.makeEmptyTSCompletion()
 
@@ -40,7 +40,7 @@ export class TemplateServiceRouter implements TemplateLanguageService {
 			}
 		}
 
-		if (!template.isWithinValueRange(temOffset)) {
+		if (!template.isWithinValueRange(gloOffset)) {
 			let regOffset = region.templateOffsetToLocal(temOffset)
 			let regPosition = region.localOffsetToPosition(regOffset)
 			let vsRegionCompletions = this.getHTMLAndCSSCompletionItems(region, regPosition)
@@ -82,7 +82,7 @@ export class TemplateServiceRouter implements TemplateLanguageService {
 		return info
 	}
 
-	getCompletionEntryDetails(template: Template, temOffset: number, _gloOffset: number, name: string): TS.CompletionEntryDetails | undefined {
+	getCompletionEntryDetails(template: Template, temOffset: number, gloOffset: number, name: string): TS.CompletionEntryDetails | undefined {
 		let region = template.embedded.getRegionAt(temOffset)
 
 		if (region.languageId === 'html') {
@@ -92,7 +92,7 @@ export class TemplateServiceRouter implements TemplateLanguageService {
 			}
 		}
 
-		if (!template.isWithinValueRange(temOffset)) {
+		if (!template.isWithinValueRange(gloOffset)) {
 			let regOffset = region.templateOffsetToLocal(temOffset)
 			let regPosition = region.localOffsetToPosition(regOffset)
 			let vsCompletions = this.getHTMLAndCSSCompletionItems(region, regPosition)

@@ -4,6 +4,7 @@
 # 1.3.9
 
 - Adjust auto indent when previous line not starts with tag.
+- Fix sometimes completion inside `${...}` los issue.
 
 
 # 1.3.8

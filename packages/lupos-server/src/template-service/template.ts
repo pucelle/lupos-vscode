@@ -125,10 +125,9 @@ export class Template extends TemplateBasis implements OriginTranslator {
 		return this.helper.getNodeAtOffset(this.node, globalOffset)
 	}
 
-	/** Test whether searching node at specified offset get value range. */
-	isWithinValueRange(localOffset: number): boolean {
+	/** Test an original source offset without rounding through template placeholders. */
+	isWithinValueRange(gloOffset: number): boolean {
 		let ts = this.helper.ts
-		let gloOffset = this.localOffsetToGlobal(localOffset)
 
 		let currentNode = this.helper.getNodeAtOffset(this.node, gloOffset)
 		if (!currentNode) {
