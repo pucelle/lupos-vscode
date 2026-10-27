@@ -63,8 +63,26 @@ describe('server language features', () => {
 		let entry = completion?.entries.find(entry => entry.name === name)
 
 		expect(entry?.isSnippet).toBe(true)
-		expect(entry?.insertText).toBe(name + parameters + '>\n\t$0\n</' + name + '>')
-		expect(entry?.replacementSpan).toEqual({start: source.indexOf('<lu:') + 1, length: 4})
+		expect(entry?.insertText).toBe(name + parameters + '>\n\t$0\n</' + name)
+		expect(entry?.replacementSpan).toEqual({start: source.indexOf('<lu:') + 1, length: 3})
+	})
+
+	it.each(['insert', 'replace'])('keeps one closing delimiter when accepting a control snippet in %s mode', mode => {
+		let source = "import {html} from 'lupos.html'\nconst view = html`<lu:>`"
+		let position = source.indexOf('<lu:') + 4
+		let {service, fileName} = createTestLanguageService(source)
+		let completion = service.getCompletionsAtPosition(fileName, position, {})
+		let entry = completion?.entries.find(entry => entry.name === 'lu:if')
+
+		expect(entry?.isSnippet).toBe(true)
+		expect(entry?.replacementSpan).toBeDefined()
+
+		let span = entry!.replacementSpan!
+		let end = mode === 'insert' ? position : span.start + span.length
+		let result = source.slice(0, span.start) + entry!.insertText + source.slice(end)
+		let expected = "import {html} from 'lupos.html'\nconst view = html`<lu:if \\${${1}}>\n\t$0\n</lu:if>`"
+
+		expect(result).toBe(expected)
 	})
 
 	it('completes a bare opening angle bracket with a CRLF control snippet', () => {

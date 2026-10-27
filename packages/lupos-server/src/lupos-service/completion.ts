@@ -84,14 +84,17 @@ export class LuposCompletion {
 			}
 
 			let parameters = CONTROL_TAG_PARAMETERS[entry.name] ?? ''
+			let closingEnd = existingEnd ? '' : '>'
 
 			entry.insertText = entry.name + parameters + '>'
-				+ lineBreak + '\t$0' + lineBreak + '</' + entry.name + '>'
+				+ lineBreak + '\t$0' + lineBreak + '</' + entry.name + closingEnd
 
 			entry.isSnippet = true
 
 			if (entry.replacementSpan) {
-				entry.replacementSpan.length += existingEnd.length
+
+				// Keep the existing '>' for the snippet's closing tag in either completion mode.
+				entry.replacementSpan.length += Math.max(0, existingEnd.length - 1)
 			}
 		}
 	}

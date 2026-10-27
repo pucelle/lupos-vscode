@@ -1,6 +1,11 @@
 # Changes
 
 
+# 1.3.10
+
+- Completing <lu:> now reuses the existing `>`, preventing the duplicated `>>`.
+
+
 # 1.3.9
 
 - Adjust auto indent when previous line not starts with tag.
