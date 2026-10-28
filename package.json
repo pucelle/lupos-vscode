@@ -52,6 +52,13 @@
 				"injectTo": [
 					"source.ts"
 				],
+				"scopeName": "inline.lupos.svg-interpolation",
+				"path": "./syntaxes/lupos-svg-interpolation.json"
+			},
+			{
+				"injectTo": [
+					"source.ts"
+				],
 				"scopeName": "inline.lupos.css",
 				"path": "./syntaxes/lupos-css.json",
 				"embeddedLanguages": {

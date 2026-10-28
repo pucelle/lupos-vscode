@@ -4,6 +4,7 @@
 # 1.3.10
 
 - Completing <lu:> now reuses the existing `>`, preventing the duplicated `>>`.
+- Fix the template interpolation `${...}` highlight in `<svg>`.
 
 
 # 1.3.9

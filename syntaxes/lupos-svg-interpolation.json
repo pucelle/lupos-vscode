@@ -1,0 +1,9 @@
+{
+	"scopeName": "inline.lupos.svg-interpolation",
+	"injectionSelector": "L:source.ts meta.embedded.block.html meta.element.structure.svg.html -comment -string.quoted -meta.template.expression.ts",
+	"patterns": [
+		{
+			"include": "source.ts#template-substitution-element"
+		}
+	]
+}
